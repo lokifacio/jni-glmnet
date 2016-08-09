@@ -1,18 +1,18 @@
-package glmnet;
+package jglmnet.glmnet;
 
 import cern.colt.matrix.tdouble.*;
 import cern.colt.matrix.tdouble.impl.*;
 
 /**
- * Logistic/multinomial regression learner.
+ * Linear regression learner.
  *
- * This is a Java-eseque wrapper around The lognet and splognet functions from
+ * This is a Java-eseque wrapper around The elnet and spelnet functions from
  * the glmnet package.
  *
  * @author Thomas Down
  */
 
-public class ClassificationLearner {
+public class RegressionLearner {
     private boolean standardize = true;
     private int covUpdating = 2;
     private double alpha = 1.0;
@@ -71,16 +71,11 @@ public class ClassificationLearner {
 	return this.maxIterations;
     }
 
-    public ClassificationModelSet learn(boolean[] labels, DoubleMatrix2D x) {
-	int rows = labels.length;
+    public RegressionModelSet learn(DoubleMatrix1D y, DoubleMatrix2D x) {
+	int rows = (int) y.size(); // Matrix1Ds can can be >MAX_INT?  What is the world coming to?
 	int cols = x.columns();
 	if (x.rows() != rows) {
 	    throw new IllegalArgumentException("Outputs don't match rows of predictor matrix");
-	}
-
-	DenseColumnDoubleMatrix2D y = new DenseColumnDoubleMatrix2D(rows, 2);
-	for (int i = 0; i < labels.length; ++i) {
-	    y.set(i, labels[i] ? 0 : 1, 1.0);
 	}
 
 	int maxFinalFeatures = cols + 1;
@@ -90,8 +85,7 @@ public class ClassificationLearner {
 	double[] outCoeffs = new double[maxPathFeatures * numLambdas];
 	int[] outCoeffPtrs = new int[maxPathFeatures];
 	int[] outCoeffCnts = new int[numLambdas];
-	double[] outDev0 = new double[numLambdas];
-	double[] outFdev = new double[numLambdas];
+	double[] outRsq = new double[numLambdas];
 	double[] outLambdas = new double[numLambdas];
 	int[] outNumPasses = new int[1];
 	int[] outNumFits = new int[1];
@@ -107,6 +101,9 @@ public class ClassificationLearner {
 	for (int i = 0; i < rows; ++i) {
 	    weights[i] = 1.0;
 	}
+
+	DenseDoubleMatrix1D yc = new DenseDoubleMatrix1D(rows);
+	yc.assign(y);
 
 	double _mlr = minLambdaRatio;
 	if (_mlr < 0) {
@@ -131,11 +128,11 @@ public class ClassificationLearner {
 	    }
 	    double[] xx = sccd.getValues();
 
-	    err = new GLMNet().splognet(
+	    err = new GLMNet().spelnet(
+		covUpdating,
 		alpha,
-		1,
-		y.elements(),
-		new double[rows],
+		yc.elements(),
+		weights,
 		xx,
 		xi,
 		xp,
@@ -149,25 +146,23 @@ public class ClassificationLearner {
 		convThreshold,
 		standardize ? 1 : 0,
 		maxIterations,
-		0,
 		outNumFits,
 		outIntercepts,
 		outCoeffs,
 		outCoeffPtrs,
 		outCoeffCnts,
-		outDev0,
-		outFdev,
+		outRsq,
 		outLambdas,
 		outNumPasses);
 	} else {
 	    DenseColumnDoubleMatrix2D dcdm = new DenseColumnDoubleMatrix2D(x.rows(), x.columns());
 	    dcdm.assign(x);
 
-	    err = new GLMNet().lognet(
+	    err = new GLMNet().elnet(
+		covUpdating,
 		alpha,
-		1,
-		y.elements(),
-		new double[rows],
+		yc.elements(),
+		weights,
 		dcdm.elements(),
 		mFlags,
 		penalties,
@@ -179,14 +174,12 @@ public class ClassificationLearner {
 		convThreshold,
 		standardize ? 1 : 0,
 		maxIterations,
-		0,
 		outNumFits,
 		outIntercepts,
 		outCoeffs,
 		outCoeffPtrs,
 		outCoeffCnts,
-		outDev0,
-		outFdev,
+		outRsq,
 		outLambdas,
 		outNumPasses);
 	}
@@ -195,6 +188,6 @@ public class ClassificationLearner {
 	    throw new LearnerException(err);
 	}
 
-	return new ClassificationModelSet(outNumPasses[0], outNumFits[0], outIntercepts, outCoeffs, outCoeffPtrs, outCoeffCnts, cols, maxPathFeatures);
+	return new RegressionModelSet(outNumPasses[0], outNumFits[0], outRsq, outIntercepts, outCoeffs, outCoeffPtrs, outCoeffCnts, cols, maxPathFeatures);
     }
 }

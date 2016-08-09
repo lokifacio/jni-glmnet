@@ -1,4 +1,8 @@
-package glmnet;
+package jglmnet.glmnet;
+
+import cz.adamh.utils.NativeUtils;
+
+import java.io.IOException;
 
 /**
  * Low-level bindings to glmnet functions.
@@ -12,7 +16,12 @@ package glmnet;
 
 public class GLMNet {
     static {
-	System.loadLibrary("glmnet");
+        try {
+            NativeUtils.loadLibraryFromJar("/libglmnet.so");
+        } catch (IOException e) {
+            e.printStackTrace(); // This is probably not the best way to handle exception :-)
+        }
+
     }
 
 

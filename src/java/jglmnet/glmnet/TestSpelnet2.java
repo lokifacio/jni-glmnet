@@ -1,4 +1,4 @@
-package glmnet;
+package jglmnet.glmnet;
 
 import cern.colt.matrix.tdouble.*;
 import cern.colt.matrix.tdouble.impl.*;

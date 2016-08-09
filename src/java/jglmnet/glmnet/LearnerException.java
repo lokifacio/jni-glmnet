@@ -1,4 +1,4 @@
-package glmnet;
+package jglmnet.glmnet;
 
 /**
  * Error occurrent in GLMNet learning routines.

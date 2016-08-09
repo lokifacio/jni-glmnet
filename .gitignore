@@ -1,12 +1,10 @@
-pom.xml
 *.jar
 lib
 classes
 *~
 #*
 *.o
-*.so
 *.jnilib
-glmnet_GLMNet.h
+jglmnet_glmnet_GLMNet.h
 bin
 .lein-deps-sum

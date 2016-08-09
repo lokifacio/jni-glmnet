@@ -1,4 +1,4 @@
-package glmnet;
+package jglmnet.glmnet;
 
 public class TestSpelnet {
     public static void main(String[] args) {
