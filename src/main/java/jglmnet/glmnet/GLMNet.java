@@ -12,16 +12,17 @@ import java.io.IOException;
  * instead.
  *
  * @author Thomas Down
+ * @author Jorge Peña
  */
 
 public class GLMNet {
     static {
         try {
-            NativeUtils.loadLibraryFromJar("/libglmnet.so");
+            NativeUtils.loadLibraryFromJar("/libgfortran.so.3");
+            NativeUtils.loadLibraryFromJar("/" + System.mapLibraryName("glmnet"));
         } catch (IOException e) {
             e.printStackTrace(); // This is probably not the best way to handle exception :-)
         }
-
     }
 
 
@@ -144,5 +145,4 @@ c
        double[] fdev,
        double[] outLambdas, 
        int[] outNumPasses);
-
 }

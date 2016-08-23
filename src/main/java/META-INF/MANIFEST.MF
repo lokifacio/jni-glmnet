@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Class-Path: csparsej-1.1.1.jar optimization-1.0.jar JKLU-1.0.0.jar par
+ allelcolt-0.10.0.jar netlib-java-0.9.3.jar jtransforms-2.4.0.jar core
+ -lapack-0.1.jar arpack_combined_all-0.1.jar jplasma-1.2.0.jar COLAMDJ
+ -1.0.1.jar BTFJ-1.0.1.jar AMDJ-1.0.1.jar native-utils-c3fda8e996f4f5e
+ 947fe7543f2a185508e919c78.jar
+

@@ -1,8 +1,7 @@
 package jglmnet.glmnet;
 
-
-import cern.colt.matrix.tdouble.*;
-import cern.colt.matrix.tdouble.impl.*;
+import cern.colt.matrix.tdouble.DoubleMatrix1D;
+import cern.colt.matrix.tdouble.impl.SparseDoubleMatrix1D;
 
 /**
  * Set of models produced by a glmnet learner run.
@@ -10,28 +9,28 @@ import cern.colt.matrix.tdouble.impl.*;
  * @author Thomas Down
  */
 
-public class RegressionModelSet {
+public class ClassificationModelSet {
     private final int numPasses;
     private final int numFits;
-    private final double[] rsq;
     private final double[] intercepts;
     private final double[] coeffs;
     private final int[] coeffPtrs;
     private final int[] coeffCnts;
+    private final double[] lambdas;
     private final int columns;
     private final int maxPathFeatures;
 
-    RegressionModelSet(int numPasses, int numFits, double[] rsq,
-		       double[] intercepts, double[] coeffs,int[] coeffPtrs, int[] coeffCnts,
+    ClassificationModelSet(int numPasses, int numFits,
+		       double[] intercepts, double[] coeffs,int[] coeffPtrs, int[] coeffCnts, double[] lambdas,
 		       int columns, int maxPathFeatures) 
     {
 	this.numPasses = numPasses;
 	this.numFits = numFits;
-	this.rsq = rsq;
 	this.intercepts = intercepts;
 	this.coeffs = coeffs;
 	this.coeffPtrs = coeffPtrs;
 	this.coeffCnts = coeffCnts;
+	this.lambdas = lambdas;
 
 	this.columns = columns;
 	this.maxPathFeatures = maxPathFeatures;
@@ -45,7 +44,7 @@ public class RegressionModelSet {
 	return numFits;
     }
 
-    public RegressionModel getModel(int i) {
+    public ClassificationModel getModel(int i) {
 	if (i < 0 || i >= numFits) {
 	    throw new IllegalArgumentException(String.format("No model %d, allowed range 0-%d", i, numFits - 1));
 	}
@@ -54,6 +53,6 @@ public class RegressionModelSet {
 	for (int j = 0; j < coeffCnts[i]; ++j) {
 	    weights.set(coeffPtrs[j] - 1, coeffs[i*maxPathFeatures + j]);
 	}
-	return new RegressionModel(intercepts[i], weights);
+	return new ClassificationModel(intercepts[i], weights, lambdas[i]);
     }
 }
