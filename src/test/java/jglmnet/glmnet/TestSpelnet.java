@@ -1,17 +1,14 @@
 package jglmnet.glmnet;
 
-public class TestSplognet {
+public class TestSpelnet {
     public static void main(String[] args) {
-	/* double[] y = {
-	    0, 1,
-	    1, 0,
-	    0, 1,
-	    1, 0,
-	    0, 1
-	    }; */
 	double[] y = {
-	    0, 1, 0, 1, 0,
-	    1, 0, 1, 0, 1};
+	    -0.5656782,
+	    -1.462403,
+	    -0.6176524,
+       	    -1.630873,
+	    -0.4510800
+	};
 
 	double[] xx = {
 	    -0.876767,
@@ -27,7 +24,7 @@ public class TestSplognet {
     	int[] xi = {1, 4, 1, 3, 2, 1, 2, 3};
 	int[] xp = {1, 2, 2, 3, 3, 3, 3, 4, 5, 6, 6, 9};
 
-	int rows = y.length/2;
+	int rows = y.length;
 	int cols = xp.length - 1;
 
 	double[][] matrix = new double[rows][cols];
@@ -56,14 +53,14 @@ public class TestSplognet {
 	int maxPathFeatures = Math.min(maxFinalFeatures * 2, cols);
 	double minLambdaRatio = rows < cols ? 0.01 : 0.0001;
 	int numLambdas = 100;
+	int covUpdating = 2;
 	int maxIterations = 100000;
 
 	double[] outIntercepts = new double[numLambdas];
 	double[] outCoeffs = new double[maxPathFeatures * numLambdas];
 	int[] outCoeffPtrs = new int[maxPathFeatures];
 	int[] outCoeffCnts = new int[numLambdas];
-	double[] outDev0 = new double[numLambdas];
-	double[] outFdev = new double[numLambdas];
+	double[] outRsq = new double[numLambdas];
 	double[] outLambdas = new double[numLambdas];
 	int[] outNumPasses = new int[1];
 	int[] outNumFits = new int[1];
@@ -77,11 +74,11 @@ public class TestSplognet {
 	
 	
 
-	int err = new GLMNet().splognet(
+	int err = new Fortran().spelnet(
+	   covUpdating,
 	   alpha,
-	   1,
 	   y,
-	   new double[y.length],
+	   w,
 	   xx,
 	   xi,
 	   xp,
@@ -95,14 +92,12 @@ public class TestSplognet {
 	   convThreshold,
 	   standardize,
 	   maxIterations,
-	   0,
 	   outNumFits,
 	   outIntercepts,
 	   outCoeffs,
 	   outCoeffPtrs,
 	   outCoeffCnts,
-	   outDev0,
-	   outFdev,
+	   outRsq,
 	   outLambdas,
 	   outNumPasses);
 

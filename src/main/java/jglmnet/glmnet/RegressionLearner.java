@@ -127,7 +127,7 @@ public class RegressionLearner {
 			}
 			double[] xx = sccd.getValues();
 
-			err = new GLMNet().spelnet(
+			err = new Fortran().spelnet(
 					covUpdating,
 					alpha,
 					yc.elements(),
@@ -157,7 +157,7 @@ public class RegressionLearner {
 			DenseColumnDoubleMatrix2D dcdm = new DenseColumnDoubleMatrix2D(x.rows(), x.columns());
 			dcdm.assign(x);
 
-			err = new GLMNet().elnet(
+			err = new Fortran().elnet(
 					covUpdating,
 					alpha,
 					yc.elements(),

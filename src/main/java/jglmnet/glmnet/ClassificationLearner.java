@@ -82,6 +82,7 @@ public class ClassificationLearner {
 		for (int i = 0; i < labels.length; ++i) {
 			y.set(i, labels[i] ? 0 : 1, 1.0);
 		}
+		System.out.println(y.toString());
 
 		int maxFinalFeatures = cols + 1;
 		int maxPathFeatures = Math.min(maxFinalFeatures * 2, cols);
@@ -131,7 +132,7 @@ public class ClassificationLearner {
 			}
 			double[] xx = sccd.getValues();
 
-			err = new GLMNet().splognet(
+			err = new Fortran().splognet(
 					alpha,
 					1,
 					y.elements(),
@@ -163,7 +164,14 @@ public class ClassificationLearner {
 			DenseColumnDoubleMatrix2D dcdm = new DenseColumnDoubleMatrix2D(x.rows(), x.columns());
 			dcdm.assign(x);
 
-			err = new GLMNet().lognet(
+      DenseDoubleMatrix2D limits = new DenseDoubleMatrix2D(2, x.columns());
+
+      for (int c = 0; c < x.columns(); c++) {
+        limits.set(0, c, Double.NEGATIVE_INFINITY);
+        limits.set(1, c, Double.POSITIVE_INFINITY);
+      }
+
+			err = Fortran.lognet(
 					alpha,
 					1,
 					y.elements(),
@@ -171,6 +179,7 @@ public class ClassificationLearner {
 					dcdm.elements(),
 					mFlags,
 					penalties,
+					limits.elements(),
 					maxFinalFeatures,
 					maxPathFeatures,
 					numLambdas,
@@ -178,6 +187,7 @@ public class ClassificationLearner {
 					new double[100],
 					convThreshold,
 					standardize ? 1 : 0,
+					1,
 					maxIterations,
 					0,
 					outNumFits,

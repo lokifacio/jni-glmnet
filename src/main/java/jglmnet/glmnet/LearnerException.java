@@ -1,13 +1,13 @@
 package jglmnet.glmnet;
 
 /**
- * Error occurrent in GLMNet learning routines.
+ * Error occurrent in Fortran learning routines.
  *
  * @author Thomas Down
  */
 
 public class LearnerException extends RuntimeException {
     public LearnerException(int err) {
-	super(String.format("Error in GLMNet (err=%d)", err));
+	super(String.format("Error in Fortran (err=%d)", err));
     }
 }

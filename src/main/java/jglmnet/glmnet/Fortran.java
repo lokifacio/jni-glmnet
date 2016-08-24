@@ -15,7 +15,7 @@ import java.io.IOException;
  * @author Jorge Peña
  */
 
-public class GLMNet {
+public class Fortran {
     static {
         try {
             NativeUtils.loadLibraryFromJar("/libgfortran.so.3");
@@ -55,7 +55,6 @@ public class GLMNet {
 c call spelnet(ka,parm,no,ni,x,ix,jx,y,w,jd,vp,ne,nx,nlam,flmin,ulam,thr,
 c             isd,maxit,lmu,a0,ca,ia,nin,rsq,alm,nlp,jerr)
     */
-
     public native int spelnet(
        int covUpdating,
        double alpha,
@@ -83,22 +82,24 @@ c             isd,maxit,lmu,a0,ca,ia,nin,rsq,alm,nlp,jerr)
        double[] outLambdas, 
        int[] outNumPasses);
 
-    public native int lognet(
+    public static native int lognet(
        double alpha,
        int nc,
        double[] y,
        double[] offsets,
        double[] x,
        int[] mFlags, 
-       double[] penalties, 
-       int maxFinal, 
+       double[] penalties,
+       double[] coeffLimits,
+       int maxFinal,
        int maxPath, 
        int numLambdas, 
        double lambdaMinRatio, 
        double[] userLambdas, 
        double convThreshold, 
-       int standardize, 
-       int maxit, 
+       int standardize,
+       int intercept,
+       int maxit,
        int kopt,
        int[] outNumFits, 
        double[] outIntercepts, 
@@ -116,7 +117,6 @@ c call splognet (parm,no,ni,nc,x,ix,jx,y,o,jd,vp,ne,nx,nlam,flmin,
 c             ulam,thr,isd,maxit,kopt,lmu,a0,ca,ia,nin,dev0,fdev,alm,nlp,jerr)
 c
     */
-
     public native int splognet(
        double alpha,
        int nc,
