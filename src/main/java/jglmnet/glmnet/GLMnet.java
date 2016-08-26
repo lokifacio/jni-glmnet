@@ -4,6 +4,7 @@ import cern.colt.matrix.tdouble.DoubleMatrix1D;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.DenseColumnDoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.DenseDoubleMatrix1D;
+import cern.colt.matrix.tdouble.impl.DenseDoubleMatrix3D;
 
 import java.util.Arrays;
 import java.util.List;
@@ -18,17 +19,18 @@ public class GLMnet {
   enum LogisticType {Newton, ModifiedNewton}
   enum MultinomialType {Ungrouped, Grouped}
 
+  // Default values taken from glmnet.R
+  private double alpha = 1.0;
   private Family family = Family.Binomial;
-  double alpha = 1.0;
-  int nlam = 100;
-  double lambdaMinRatio = 0.01;// ifelse(nobs < nvars, 0.01, 1e-04)
-  DoubleMatrix1D lambda = new DenseDoubleMatrix1D(1);
+  private int nlam = 100;
+  private Double lambdaMinRatio;
+  private DoubleMatrix1D lambda;
 
-  boolean standardize = true;
-  boolean intercept = true;
-  double thresh = 1e-07;
-  int dfmax = 1; //nvars +  1;
-  int pmax = 2; //min(dfmax *2 + 20, nvars)
+  private boolean standardize = true;
+  private boolean intercept = true;
+  private double thresh = 1e-07;
+  private Integer dfmax;
+  private Integer pmax;
   // exlude?
   DoubleMatrix1D penaltyFactor; // rep(1, nvars)
   boolean standardizeResponse = false;
@@ -40,25 +42,59 @@ public class GLMnet {
 //        500, "covariance", "naive"), type.multinomial = c("ungrouped",
 //        "grouped")
 
-  public void setAlpha(double alpha) {
-//    if (alpha > 1) {
-//      warning("alpha >1; set to 1")
-//      alpha = 1
-//    }
-//    if (alpha < 0) {
-//      warning("alpha<0; set to 0")
-//      alpha = 0
-//    }
-//    alpha = as.double(alpha)
+  public GLMnet setAlpha(double value) {
+    alpha = value;
+
+    if (alpha > 1) {
+      System.out.println("Warning: alpha > 1; set to 1");
+      alpha = 1;
+    } else if (alpha < 0) {
+      System.out.println("Warning: alpha > 1; set to 1");
+      alpha = 0;
+    }
+
+    return this;
+  }
+
+  public GLMnet setNLambdas(int value) {
+    nlam = value;
+
+    return this;
+  }
+
+  public GLMnet setLambdaMinRatio(double value) {
+    lambdaMinRatio = value;
+
+    return this;
+  }
+
+  public GLMnet setLambdas(DoubleMatrix1D lambdas) {
+    lambda = lambdas;
+
+    return this;
+  }
+
+  // maximum number of variables allowed to enter largest model
+  // (stopping criterion)
+  public GLMnet setDFMax(int value) {
+    dfmax = value;
+
+    return this;
+  }
+
+  //nx = maximum number of variables allowed to enter all models
+  //     along path (memory allocation, pmax > dfmax).
+  public GLMnet setPMax(int value) {
+    pmax = value;
+
+    return this;
   }
 
   public ClassificationModelSet  fit
       ( DoubleMatrix2D x,
-      DoubleMatrix1D y,
-      DoubleMatrix1D weights
-  ) throws Exception {
-
-        lambda.set(0, 0.05);
+        DoubleMatrix1D y,
+        DoubleMatrix1D weights
+      ) throws Exception {
 
     if (x.columns() < 2) {
       throw new Exception("x should be a matrix with 2 or more columns");
@@ -85,15 +121,8 @@ public class GLMnet {
 //    if (is.null(vnames))
 //    vnames = paste("V", seq(nvars), sep = "")
 
-    dfmax = nvars + 1;
-    // maximum number of variables allowed to enter largest model
-    // (stopping criterion)
-    int ne = dfmax; // FIXME
-
-    // maximum number of variables allowed to enter all models
-    // along path (memory allocation, nx > ne).
-    pmax = Math.min(dfmax * 2 + 20, nvars);// Un poco raro...siempre va a ser nvars menor...
-    int nx = pmax;
+    int ne = (dfmax == null)?(nvars + 1):dfmax;
+    int nx = (pmax == null)?Math.min(ne * 2 + 20, nvars):pmax;
 
     //TODO: excluir variables
 //    if (!missing(exclude)) {
@@ -173,6 +202,10 @@ public class GLMnet {
     //          variables locations and scales.
     int jsd = standardizeResponse?1:0;
 
+    if (lambdaMinRatio == null) {
+      lambdaMinRatio = (nobs < nvars)?0.01:1e-04;
+    }
+
     double   flmin = lambdaMinRatio;
     double[] ulam  = new double[]{1};
 
@@ -198,7 +231,7 @@ public class GLMnet {
     boolean isSparse = false;
 
     //x, ix, jx = predictor matrix in compressed sparse row format
-    //TODO: Sparse
+    //TODO: Sparse (en un principio podemos delegarlo a las familias
     //ix = jx = NULL
 //    if (inherits(x, "sparseMatrix")) {
 //      is.sparse = TRUE

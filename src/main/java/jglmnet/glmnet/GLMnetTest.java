@@ -56,7 +56,11 @@ public class GLMnetTest {
       }
     }
 
-    GLMnet GLMnet = new GLMnet();
+    DenseDoubleMatrix1D lambdas = new DenseDoubleMatrix1D(1);
+    lambdas.set(0, 0.05);
+
+    GLMnet GLMnet = new GLMnet().setLambdas(lambdas);
+
     ClassificationModelSet mods = GLMnet.fit(dm, y, weights);
 
     for (int i = 0; i < mods.getNumFits(); ++i) {

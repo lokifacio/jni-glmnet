@@ -16,6 +16,7 @@
         <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
 
+    <!--Permite cargar repositorios de github-->
     <repositories>
         <repository>
             <id>jitpack.io</id>
@@ -25,9 +26,9 @@
 
     <dependencies>
         <dependency>
-            <groupId>net.sourceforge.parallelcolt</groupId>
+            <groupId>com.github.rwl</groupId>
             <artifactId>parallelcolt</artifactId>
-            <version>0.10.0</version>
+            <version>36a75e68abae9ed7ece5426cd96272a9ba328346</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

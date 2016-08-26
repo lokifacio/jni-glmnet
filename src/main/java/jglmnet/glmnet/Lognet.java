@@ -75,7 +75,6 @@ public class Lognet {
       Double c = y.get(i);
       dy.set(i, keys.indexOf(c), w.get(i));
     }
-    System.out.println(dy.toString());
 
     // Check for size limitations
     int maxVars = Integer.MAX_VALUE/(nlam*nc);
@@ -194,7 +193,9 @@ public class Lognet {
           outLambdas,
           outNumPasses);
 
-      System.out.println("Error: " + err);
+      if (err != 0 ) {
+        System.out.println("Error: " + err);
+      }
 
       fit = new ClassificationModelSet(outNumPasses[0], outNumFits[0], outIntercepts, outCoeffs, outCoeffPtrs, outCoeffCnts, outLambdas, nvars, nx);
     }
