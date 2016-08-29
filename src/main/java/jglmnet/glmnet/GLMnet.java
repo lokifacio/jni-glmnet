@@ -207,7 +207,7 @@ public class GLMnet {
     }
 
     double   flmin = lambdaMinRatio;
-    double[] ulam  = new double[]{1};
+    double[] ulam  = new double[]{0};
 
     if (lambda == null) {
       if (lambdaMinRatio >= 1) {
@@ -317,9 +317,11 @@ public class GLMnet {
 //        is.sparse, ix, jx, y, weights, offset, alpha, nobs,
 //        nvars, jd, vp, cl, ne, nx, nlam, flmin, ulam, thresh,
 //        isd, jsd, intr, vnames, maxit))
-//    if (is.null(lambda))
-//    fit$lambda = fix.lam(fit$lambda)
-//    fit$call = this.call
+
+    if (lambda == null) {
+      mods.fixLambda();
+    }
+
 //    fit$nobs = nobs
 //    class(fit) = c(class(fit), "glmnet")
 //    fit

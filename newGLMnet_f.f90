@@ -31,7 +31,7 @@ c        = 1.0 => lasso
 c   no = number of observations
 c   ni = number of predictor variables
 c   y(no) = response vector (overwritten)
-c   w(no)= observation weights (overwritten)
+c   w(no)= observation betas (overwritten)
 c   jd(jd(1)+1) = predictor variable deletion flag
 c      jd(1) = 0  => use all variables
 c      jd(1) != 0 => do not use variables jd(2)...jd(jd(1)+1)
@@ -332,7 +332,7 @@ c      jerr > 0 => fatal error - no output returned
 c         jerr < 7777 => memory allocation error
 c         jerr = 7777 => all used predictors have zero variance
 c         jerr = 8888 => negative response count y values
-c         jerr = 9999 => no positive observations weights
+c         jerr = 9999 => no positive observations betas
 c         jerr = 10000 => maxval(vp) <= 0.0
 C      jerr < 0 => non fatal error - partial output:
 c         Solutions for larger lamdas (1:(k-1)) returned.
@@ -366,7 +366,7 @@ c   ni = number of predictor variables
 c   x(no,ni) = predictor data matrix flat file
 c   y(no) = observation response counts
 c   o(no) = observation off-sets
-c   w(no)= observation weights
+c   w(no)= observation betas
 c   nsol = number of solutions
 c   a0(nsol) = intercept for each solution
 c   a(ni,nsol) = solution coefficient vectors (uncompressed)
@@ -388,7 +388,7 @@ c   ni = number of predictor variables
 c   x, ix, jx = predictor data matrix in compressed sparse row format
 c   y(no) = observation response counts
 c   o(no) = observation off-sets
-c   w(no)= observation weights
+c   w(no)= observation betas
 c   nsol = number of solutions
 c   a0(nsol) = intercept for each solution
 c   a(ni,nsol) = solution coefficient vectors (uncompressed)
@@ -409,7 +409,7 @@ c   no = number of observations
 c   x, ix, jx = predictor data matrix in compressed sparse row format
 c   y(no) = observation response counts
 c   o(no) = observation off-sets
-c   w(no)= observation weights
+c   w(no)= observation betas
 c   nx = input to spfishnet
 c   lmu,a0(lmu),ca(nx,lmu),ia(nx),nin(lmu) = output from spfishnet
 c
@@ -448,7 +448,7 @@ c      jerr > 0 => fatal error - no output returned
 c         jerr < 7777 => memory allocation error
 c         jerr = 7777 => all used predictors have zero variance
 c         jerr = 8888 => all observations censored (d(i)=0.0)
-c         jerr = 9999 => no positive observations weights
+c         jerr = 9999 => no positive observations betas
 c         jerr = 10000 => maxval(vp) <= 0.0
 c         jerr = 20000, 30000 => initialization numerical error
 C      jerr < 0 => non fatal error - partial output:
@@ -504,7 +504,7 @@ c   d(no) = died/censored indicator
 c       d(i)=0.0 => y(i) = censoring time
 c       d(i)=1.0 => y(i) = death time
 c   o(no) = observation off-sets
-c   w(no)= observation weights
+c   w(no)= observation betas
 c   nvec = number of coefficient vectors
 c   a(ni,nvec) = coefficient vectors (uncompressed)
 c

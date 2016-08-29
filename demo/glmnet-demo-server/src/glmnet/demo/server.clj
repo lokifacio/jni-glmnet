@@ -31,7 +31,7 @@
 			     :let [model (.getModel models mi)
 				   wm    (.getWeights model)]]
 			 {:intercept (.getIntercept model)
-			  :weights   (for [i (range (.size wm))] (.get wm i))}))})))
+			  :betas   (for [i (range (.size wm))] (.get wm i))}))})))
 
 (defroutes glmnet-demo
   (POST "/v1/classify" [] post-classify)

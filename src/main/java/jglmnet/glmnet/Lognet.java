@@ -45,7 +45,7 @@ public class Lognet {
       throw new Exception("x and y have different number of rows in call to glmnet");
     }
 
-    Map<Double, Long> count = Arrays.stream(y.toArray()).mapToObj(d -> d).collect(Collectors.groupingBy(d -> d, Collectors.counting()));
+    Map<Double, Long> count = Classifiers.getClassCount(y);
 
     // nc = number of classes (distinct outcome values)
     int nc = count.size();
@@ -163,6 +163,8 @@ public class Lognet {
       double[] outLambdas = new double[nlam];
       int[] outNumPasses = new int[1];
       int[] outNumFits = new int[1];
+
+      Arrays.fill(outLambdas, Double.NaN);
 
       err = Fortran.lognet(
           alpha,

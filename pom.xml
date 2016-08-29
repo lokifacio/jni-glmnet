@@ -50,7 +50,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>jglmnet.glmnet.GLMnetTest</mainClass>
+                            <mainClass>jglmnet.glmnet.cv.GLMnetTest</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
