@@ -4,79 +4,92 @@ import cern.colt.matrix.tdouble.DoubleMatrix1D;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.DenseColumnDoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.DenseDoubleMatrix1D;
-import cern.colt.matrix.tdouble.impl.DenseDoubleMatrix3D;
 
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
  * Java implementation of R glmnet
  * @author Jorge Peña
  */
-public class GLMnet {
+public class GLMnet extends GLMnetBase {
 
-  enum Family {Gaussian, Binomial, Poisson, Multinomial, Cox, MGaussian}
-  enum LogisticType {Newton, ModifiedNewton}
-  enum MultinomialType {Ungrouped, Grouped}
-
-  // Default values taken from glmnet.R
-  private double alpha = 1.0;
-  private Family family = Family.Binomial;
-  private int nlam = 100;
-  private Double lambdaMinRatio;
-  private DoubleMatrix1D lambda;
-
-  private boolean standardize = true;
-  private boolean intercept = true;
-  private double thresh = 1e-07;
   private Integer dfmax;
   private Integer pmax;
   // exlude?
   DoubleMatrix1D penaltyFactor; // rep(1, nvars)
   boolean standardizeResponse = false;
+
   LogisticType logisticType = LogisticType.Newton;
   MultinomialType multinomialType = MultinomialType.Ungrouped;
-  int maxit = (int)1e5;
+
+  @Override
+  public GLMnet setAlpha(double value) {
+    super.setAlpha(value);
+    return this;
+  }
+
+  @Override
+  public GLMnet setNLambdas(int value) {
+    super.setNLambdas(value);
+    return this;
+  }
+
+  @Override
+  public GLMnet setLambdas(List<Double> lambdas) {
+    super.setLambdas(lambdas);
+    return this;
+  }
+
+  @Override
+  public GLMnet setLambdaMinRatio(Double value) {
+    super.setLambdaMinRatio(value);
+    return this;
+  }
+
+  @Override
+  public GLMnet setFamily(Family family) {
+    super.setFamily(family);
+    return this;
+  }
+
+  @Override
+  public GLMnet setThreshold(double value) {
+    super.setThreshold(value);
+    return this;
+  }
+
+  @Override
+  public GLMnet setIntercept(boolean value) {
+    super.setIntercept(value);
+    return this;
+  }
+
+  @Override
+  public GLMnet setStandardize(boolean value) {
+    super.setStandardize(value);
+    return this;
+  }
+
+  @Override
+  public GLMnet setMaxIter(int n) {
+    super.setMaxIter(n);
+    return this;
+  }
+
+  @Override
+  public GLMnet setLimits(List<Double> lower, List<Double> upper) throws Exception {
+    super.setLimits(lower, upper);
+    return this;
+  }
 
   //        lower.limits = -Inf, upper.limits = Inf, maxit = 1e+05, type.gaussian = ifelse(nvars <
 //        500, "covariance", "naive"), type.multinomial = c("ungrouped",
 //        "grouped")
 
-  public GLMnet setAlpha(double value) {
-    alpha = value;
-
-    if (alpha > 1) {
-      System.out.println("Warning: alpha > 1; set to 1");
-      alpha = 1;
-    } else if (alpha < 0) {
-      System.out.println("Warning: alpha > 1; set to 1");
-      alpha = 0;
-    }
-
-    return this;
-  }
-
-  public GLMnet setNLambdas(int value) {
-    nlam = value;
-
-    return this;
-  }
-
-  public GLMnet setLambdaMinRatio(double value) {
-    lambdaMinRatio = value;
-
-    return this;
-  }
-
-  public GLMnet setLambdas(DoubleMatrix1D lambdas) {
-    lambda = lambdas;
-
-    return this;
-  }
-
   // maximum number of variables allowed to enter largest model
   // (stopping criterion)
-  public GLMnet setDFMax(int value) {
+  public GLMnetBase setDFMax(int value) {
     dfmax = value;
 
     return this;
@@ -84,11 +97,19 @@ public class GLMnet {
 
   //nx = maximum number of variables allowed to enter all models
   //     along path (memory allocation, pmax > dfmax).
-  public GLMnet setPMax(int value) {
+  public GLMnetBase setPMax(int value) {
     pmax = value;
 
     return this;
   }
+
+  public GLMnet() {
+  }
+
+  public GLMnet(GLMnetBase other) {
+    super(other);
+  }
+
 
   public ClassificationModelSet  fit
       ( DoubleMatrix2D x,
@@ -145,27 +166,37 @@ public class GLMnet {
 //        internal.parms = glmnet.control()
 
     //TODO: Limites
-//    if (any(lower.limits > 0)) {
-//      stop("Lower limits should be non-positive")
-//    }
-//    if (any(upper.limits < 0)) {
-//      stop("Upper limits should be non-negative")
-//    }
-//    lower.limits[lower.limits == -Inf] = -internal.parms$big
-//    upper.limits[upper.limits == Inf] = internal.parms$big
-//    if (length(lower.limits) < nvars) {
-//      if (length(lower.limits) == 1)
-//        lower.limits = rep(lower.limits, nvars)
-//      else stop("Require length 1 or nvars lower.limits")
-//    }
-//    else lower.limits = lower.limits[seq(nvars)]
-//    if (length(upper.limits) < nvars) {
-//      if (length(upper.limits) == 1)
-//        upper.limits = rep(upper.limits, nvars)
-//      else stop("Require length 1 or nvars upper.limits")
-//    }
-//    else upper.limits = upper.limits[seq(nvars)]
-//    cl = rbind(lower.limits, upper.limits)
+    DenseColumnDoubleMatrix2D cl = new DenseColumnDoubleMatrix2D(2, nvars);
+
+    for (int c = 0; c < nvars; c++) {
+      cl.set(0, c, Double.NEGATIVE_INFINITY);
+      cl.set(1, c, Double.POSITIVE_INFINITY);
+    }
+    final int LOWER_LIMIT = 0;
+    final int UPPER_LIMIT = 1;
+
+    if (lowerLimits.size() == nvars) {
+      for (int c = 0; c < nvars; c++) {
+        cl.set(LOWER_LIMIT, c, lowerLimits.get(c));
+      }
+    } else if (lowerLimits.size() <= 1) {
+      final double limit = lowerLimits.isEmpty()?Double.NEGATIVE_INFINITY:lowerLimits.get(0);
+      cl.viewRow(LOWER_LIMIT).assign(limit);
+    } else {
+      throw new Exception("Require length 1 or nvars lower.limits");
+    }
+
+    if (upperLimits.size() == nvars) {
+      for (int c = 0; c < nvars; c++) {
+        cl.set(UPPER_LIMIT, c, upperLimits.get(c));
+      }
+    } else if (upperLimits.size() <= 1) {
+      final double limit = upperLimits.isEmpty()?Double.POSITIVE_INFINITY:upperLimits.get(0);
+      cl.viewRow(UPPER_LIMIT).assign(limit);
+    } else {
+      throw new Exception("Require length 1 or nvars upper.limits");
+    }
+
 //    if (any(cl == 0)) {
 //      fdev = glmnet.control()$fdev
 //      if (fdev != 0) {
@@ -173,13 +204,6 @@ public class GLMnet {
 //        on.exit(glmnet.control(fdev = fdev))
 //      }
 //    }
-//    storage.mode(cl) = "double"
-    DenseColumnDoubleMatrix2D cl = new DenseColumnDoubleMatrix2D(2, nvars);
-
-    for (int c = 0; c < nvars; c++) {
-      cl.set(0, c, Double.NEGATIVE_INFINITY);
-      cl.set(1, c, Double.POSITIVE_INFINITY);
-    }
 
     // isd = predictor variable standarization flag:
     //     isd = 0 => regression on original predictor variables
@@ -215,17 +239,16 @@ public class GLMnet {
       }
     }
     else {
-      for(double value : lambda.toArray()) {
+      for(Double value : lambda) {
         if (value < 0) {
           throw new Exception("Lambdas should be non-negative");
         }
       }
-      double[] lambdas = lambda.toArray();
-      Arrays.sort(lambdas);
+      Collections.sort(lambda);
 
       flmin = 1;
-      ulam = lambdas;
-      nlam = lambdas.length;
+      ulam = toArray(lambda);
+      nlam = lambda.size();
     }
 
     boolean isSparse = false;
@@ -326,5 +349,9 @@ public class GLMnet {
 //    class(fit) = c(class(fit), "glmnet")
 //    fit
     return mods;
+  }
+
+  double[] toArray(List<Double> list) {
+    return list.stream().mapToDouble(Double::doubleValue).toArray();
   }
 }

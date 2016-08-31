@@ -3,11 +3,13 @@ package jglmnet.glmnet.cv;
 import cern.colt.matrix.tdouble.impl.DenseDoubleMatrix1D;
 import cern.colt.matrix.tdouble.impl.DenseDoubleMatrix2D;
 import jglmnet.glmnet.ClassificationModel;
-import jglmnet.glmnet.ClassificationModelSet;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * @author Jorge Peña
@@ -24,7 +26,7 @@ public class GLMnetTest {
     int rows = 400;
     int cols = 3;
 
-    DenseDoubleMatrix1D y  = new DenseDoubleMatrix1D(rows);
+    DenseDoubleMatrix1D y = new DenseDoubleMatrix1D(rows);
     DenseDoubleMatrix2D dm = new DenseDoubleMatrix2D(rows, cols);
     int r = 0;
     while ((line = reader.readLine()) != null) {
@@ -58,14 +60,45 @@ public class GLMnetTest {
       }
     }
 
-    DenseDoubleMatrix1D lambdas = new DenseDoubleMatrix1D(1);
-    lambdas.set(0, 0.05);
 
-    GLMnet GLMnet = new GLMnet();
+    int nfolds = 10;
+    List<Integer> foldid = new ArrayList<>(rows);
 
-    jglmnet.glmnet.cv.GLMnet.cvFit fit = GLMnet.fit(dm, y, weights);
+    int fold = 0;
+    for (int i = 0; i < rows; ++i) {
+      foldid.add(fold);
+      fold = (fold + 1) % nfolds;
+    }
 
-    System.out.println("\tLambda.min:" + fit.lambdaMin);
-    System.out.println("\tLambda.1se:" + fit.lambda1se);
+    //long sstart = System.currentTimeMillis();
+
+    double numTests = 100;
+    long start = System.currentTimeMillis();
+    for (int i = 0; i < numTests; ++i) {
+      GLMnet glmnet = new GLMnet()
+          .setFoldId(foldid)
+          .setParallel(false);
+
+      Model model = glmnet.fit(dm, y, weights);
+
+      if (i == numTests - 1) {
+        System.out.println("\tLambda.min: " + model.lambdaMin);
+        System.out.println("\tLambda.1se: " + model.lambda1se);
+        System.out.println();
+
+        for (double s : Arrays.asList(model.lambdaMin, model.lambda1se)) {
+          ClassificationModel mod = model.coef(s);
+          System.out.println("\tLambda: " + mod.getLambda());
+          System.out.println("\tIntecept: " + mod.getIntercept());
+          System.out.println("\tBetas:\n\t\t" + mod.getBetas().toString());
+          System.out.println("\tPred 0: " + mod.estimate(dm.viewRow(0)));
+          System.out.println("\tPred 1: " + mod.estimate(dm.viewRow(1)));
+          System.out.println();
+        }
+      }
+    }
+    long end = System.currentTimeMillis();
+
+    System.out.println("Avg time: " + (end - start)/numTests + " ms");
   }
 }

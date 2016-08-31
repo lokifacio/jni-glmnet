@@ -6,6 +6,7 @@ import cern.colt.matrix.tdouble.impl.DenseDoubleMatrix2D;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.Arrays;
 
 /**
  * @author Jorge Peña
@@ -56,21 +57,20 @@ public class GLMnetTest {
       }
     }
 
-    DenseDoubleMatrix1D lambdas = new DenseDoubleMatrix1D(1);
-    lambdas.set(0, 0.05);
 
-    GLMnet GLMnet = new GLMnet().setLambdas(lambdas);
+    GLMnet GLMnet = new GLMnet()
+        .setLambdas(Arrays.asList(0.0, 0.05));
 
     ClassificationModelSet mods = GLMnet.fit(dm, y, weights);
 
     for (int i = 0; i < mods.getNumFits(); ++i) {
       ClassificationModel mod = mods.getModel(i);
       System.out.println("Model " + i);
-      System.out.println("\tLambda:" + mod.getLambda());
-      System.out.println("\tIntecept:" + mod.getIntercept());
+      System.out.println("\tLambda: " + mod.getLambda());
+      System.out.println("\tIntecept: " + mod.getIntercept());
       System.out.println("\tBetas:\n\t\t" + mod.getBetas().toString());
-      System.out.println("\tPred 0:" + mod.estimate(dm.viewRow(0)));
-      System.out.println("\tPred 1:" + mod.estimate(dm.viewRow(1)));
+      System.out.println("\tPred 0: " + mod.estimate(dm.viewRow(0)));
+      System.out.println("\tPred 1: " + mod.estimate(dm.viewRow(1)));
     }
   }
 }

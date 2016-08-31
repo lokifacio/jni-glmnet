@@ -1,35 +1,27 @@
 package jglmnet.glmnet.cv;
 
-import cern.colt.function.tdouble.DoubleFunction;
 import cern.colt.matrix.tdouble.DoubleMatrix1D;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
-import cern.colt.matrix.tdouble.algo.DenseDoubleAlgebra;
 import cern.colt.matrix.tdouble.impl.DenseDoubleMatrix1D;
 import cern.colt.matrix.tdouble.impl.DenseDoubleMatrix2D;
-import jglmnet.glmnet.ClassificationModel;
 import jglmnet.glmnet.ClassificationModelSet;
 import jglmnet.glmnet.Classifiers;
+import org.apache.commons.math3.stat.descriptive.moment.Mean;
+import org.apache.commons.math3.util.Pair;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.stream.DoubleStream;
 
 /**
  * @author Jorge Peña
  */
 public class Lognet {
 
-  public static class Measures {
-    List<Double> cvm;
-    List<Double> cvsd;
-    GLMnet.MeasureType type;
-  }
-
   //function (outlist, lambda, x, y, weights, offset, foldid, type.measure,
  //           grouped, keep = FALSE)
-  public static Measures evaluate(ClassificationModelSet[] outlist,
+  public static Measures evaluate(List<ClassificationModelSet> outlist,
                                   List<Double> lambda,
                                   DoubleMatrix2D x,
                                   DoubleMatrix1D y,
@@ -46,28 +38,15 @@ public class Lognet {
     }
     boolean grouped = true; // TODO: pass as parameter
 
-    switch (measureType) {
-      case MSE:
-      case MAE:
-      case Deviance:
-      case AUC:
-      case Class:
-        break;
-      default:
-        System.err.println("Only 'deviance', 'class', 'auc', 'mse' or 'mae'  available for binomial models; 'deviance' used");
-        measureType = GLMnet.MeasureType.Deviance;
+    //System.err.println("Only 'deviance', 'class', 'auc', 'mse' or 'mae'  available for binomial models; 'deviance' used");
+    if (measureType == GLMnet.MeasureType.Default) {
+      measureType = GLMnet.MeasureType.Deviance;
     }
 
     final double prob_min = 1e-05;
     final double prob_max = 1 - prob_min;
 
-//    nc = dim(y)
-//    if (is.null(nc)) {
-//    y = as.factor(y)
-//    ntab = table(y)
-//    nc = as.integer(length(ntab))
-//    y = diag(nc)[as.numeric(y), ]
-//  }
+    //TODO: Validate for nc > 2
     int nc = Classifiers.getNumberOfClasses(y);
 
     long N = (int) y.size();
@@ -87,10 +66,8 @@ public class Lognet {
     DoubleMatrix1D offset = null;
 
     boolean isOffset = offset != null;
-
-    //TODO:
-//    mlami=max(sapply(outlist,function(obj)min(obj$lambda)))
-    final double mlami = Stream.of(outlist)
+    
+    final double mlami = outlist.stream()
         .mapToDouble(fit ->
             fit.getLambdas().stream()
                 .mapToDouble(Double::valueOf)
@@ -103,11 +80,10 @@ public class Lognet {
     DenseDoubleMatrix2D predmat = new DenseDoubleMatrix2D((int)y.size(), lambda.size());
     predmat.assign(Double.NaN);
 
-    int[] nlams = new int[nfolds];
+    int nlam = which_lam.size();
 
-    int total = 0;
     for (int fold = 0; fold < nfolds; ++fold) {
-      ClassificationModelSet fitobj = outlist[fold];
+      ClassificationModelSet fitobj = outlist.get(fold);
       Sample test = Folds.testSamples(foldid, fold, x, y, weights, offset);
 
       for (int l = 0; l < which_lam.size(); ++l) {
@@ -115,19 +91,15 @@ public class Lognet {
         try {
           DoubleMatrix1D response = fitobj.response(test.x, s);
           for (int r = 0; r < response.size(); ++r) {
-            predmat.set(total + r, l, response.get(r));
+            predmat.set(test.pos.get(r), l, response.get(r));
           }
         } catch (Exception e) {
           e.printStackTrace();
         }
       }
-
-      total += test.x.rows();
-
-      int nlami = which_lam.size();
-      nlams[fold] = nlami;
     }
 
+    long[] lambdaN = new long[lambda.size()];
     DoubleMatrix2D cvraw = null;// = new DenseDoubleMatrix2D(nfolds, lambda.size());
     if (type == GLMnet.MeasureType.AUC) {
 //      DenseDoubleMatrix2D good = new DenseDoubleMatrix2D(nfolds, lambda.size());
@@ -151,13 +123,11 @@ public class Lognet {
       //y = y/ywt
       //weights = weights * ywt
 
-      long[] lambdaN = new long[lambda.size()];
-
       for (int c = 0; c < lambda.size(); ++c) {
         lambdaN[c] = N - Arrays.stream(predmat.viewColumn(c).toArray()).filter(Double::isNaN).count();
       }
 
-      switch (type){
+      switch (measureType){
         case MSE:
           //(y[, 1] - (1 - predmat))^2 + (y[, 2] - predmat)^2,
           break;
@@ -172,46 +142,54 @@ public class Lognet {
           for (int r = 0; r < lp.rows(); ++r) {
             final double ly_r = ly.get(r);
             if (y.get(r) > 0) {
-              lp.viewRow(r).assign(v -> 2 * (ly_r - Math.log(1 - v)));
-            } else {
               lp.viewRow(r).assign(v -> 2 * (ly_r - Math.log(v)));
+            } else {
+              lp.viewRow(r).assign(v -> 2 * (ly_r - Math.log(1 - v)));
             }
           }
-
           cvraw = lp;
-//          lp = y[, 1] * log(1 - predmat) + y[, 2] * log(predmat)
-          //DoubleMatrix1D ly =
-//          ly = log(y)
-//          ly[y == 0] = 0
-//          ly = drop((y * ly) %*% c(1, 1))
-//          2 * (ly - lp)
           break;
         case Class:
           //y[, 1] * (predmat > 0.5) + y[, 2] * (predmat <= 0.5)y[, 1] * (predmat > 0.5) + y[, 2] * (predmat <= 0.5)
           break;
       }
 
+      //TODO: Validate grouped = False
 
       if (grouped) {
-        DoubleMatrix2D cvob = cvcompute(cvraw, weights, foldid, nlams);
-//        cvraw = cvob$cvraw
-//        weights = cvob$weights
-//        N = cvob$N
+        Pair<DoubleMatrix2D, double[]> cvob = cvcompute(cvraw, weights, foldid, nlam);
+        cvraw = cvob.getFirst();
+        weights = new DenseDoubleMatrix1D(cvob.getSecond());
+        lambdaN = new long[nlam];
+        for (int i = 0; i < nlam; ++i) {
+          lambdaN[i] = nfolds;
+        }
       }
     }
 
+
     Measures measures = new Measures();
-//    measures.cvm = apply(cvraw, 2, weighted.mean, w = weights, na.rm = TRUE)
-//    measures.cvsd = sqrt(apply(scale(cvraw, cvm, FALSE)^2, 2, weighted.mean,
-//        w = weights, na.rm = TRUE)/(N - 1))
-//    measures.type = type;
+
+    Mean m = new Mean();
+    for (int i = 0; i < nlam; ++i) {
+      double w[] = weights.toArray();
+      double c[] = cvraw.viewColumn(i).toArray();
+
+      final double center = m.evaluate(c, w);
+
+      double[] values = DoubleStream.of(c).map(d -> Math.pow(d - center, 2)).toArray();
+      measures.cvm.add(center);
+      measures.cvsd.add(Math.sqrt(m.evaluate(values, w)/(lambdaN[i] - 1)));
+    }
+     measures.type = type;
 
     //if (keep)
 //      out$fit.preval = predmat
+
     return measures;
   }
 
-  static DoubleMatrix2D cvcompute(DoubleMatrix2D mat, DoubleMatrix1D weights, List<Integer> foldid, int[] nlams) {
+  static Pair<DoubleMatrix2D, double[]> cvcompute(DoubleMatrix2D mat, DoubleMatrix1D weights, List<Integer> foldid, int nlam) {
     int nfolds = Folds.numFolds(foldid);
     double wisum[] = new double[nfolds];
     for (int i = 0; i < foldid.size(); ++i) {
@@ -230,7 +208,7 @@ public class Lognet {
     for (int l = 0; l < mat.columns(); ++l) {
       for (int i = 0; i < foldid.size(); ++i) {
         int fold = foldid.get(i);
-        outmat.set(fold, l, outmat.get(fold, l) + mat.get(i, l));
+        outmat.set(fold, l, outmat.get(fold, l) + mat.get(i, l)*weights.get(i));
       }
     }
 
@@ -238,18 +216,7 @@ public class Lognet {
       final double foldWeight = wisum[i];
       outmat.viewRow(i).assign(v -> v/foldWeight);
     }
-    //for (int i = 0; )
-//      double weightedMean = 0;
-//      for (int c = 0; c < mat.columns(); ++c) {
-//        weightedMean += mat.get(fo)
-//      }
-      //mati = mat[foldid == i, , drop = FALSE]
-      //wi = weights[foldid == i]
-      //outmat[i, ] = apply(mati, 2, weighted.mean, w = wi, na.rm = TRUE)
-      //good[i, seq(nlams[i])] = 1
-//    }
-//    N = apply(good, 2, sum)
-//    list(cvraw = outmat, weights = wisum, N = N)
-    return mat;
+
+    return new Pair<>(outmat, wisum);
   }
 }

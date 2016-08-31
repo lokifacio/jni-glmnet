@@ -4,7 +4,9 @@ import cern.colt.matrix.tdouble.DoubleMatrix1D;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.DenseDoubleMatrix1D;
 import cern.colt.matrix.tdouble.impl.DenseDoubleMatrix2D;
+import cern.colt.matrix.tint.impl.DenseIntMatrix1D;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Predicate;
@@ -43,13 +45,15 @@ public class Folds {
     int numSamples = (int) foldid.stream().filter(cond).count();
 
     Sample sample = new Sample();
-    sample.x = new DenseDoubleMatrix2D(numSamples, x.columns());
-    sample.y = new DenseDoubleMatrix1D(numSamples);
-    sample.w = new DenseDoubleMatrix1D(numSamples);
+    sample.pos = new DenseIntMatrix1D(numSamples);
+    sample.x   = new DenseDoubleMatrix2D(numSamples, x.columns());
+    sample.y   = new DenseDoubleMatrix1D(numSamples);
+    sample.w   = new DenseDoubleMatrix1D(numSamples);
 
     int i_sub = 0;
     for (int i = 0; i < y.size(); ++i) {
       if (cond.test(foldid.get(i))) {
+        sample.pos.set(i_sub, i);
         for (int j = 0; j < x.columns(); ++j) {
           sample.x.set(i_sub, j, x.get(i, j));
         }
@@ -67,5 +71,18 @@ public class Folds {
 
   public static int numFolds(List<Integer> foldid) {
     return Collections.max(foldid) + 1;
+  }
+
+  public static List<Integer> generateFoldIds(final int numFolds, final int numSamples) {
+    List<Integer> foldIds = new ArrayList<>(numSamples);
+
+    int fold = 0;
+    for (int i = 0; i < numSamples; ++i) {
+      foldIds.add(fold);
+      fold = (fold + 1) % numFolds;
+    }
+    Collections.shuffle(foldIds);
+
+    return foldIds;
   }
 }

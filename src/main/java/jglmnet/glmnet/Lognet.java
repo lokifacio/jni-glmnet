@@ -6,7 +6,6 @@ import cern.colt.matrix.tdouble.impl.DenseColumnDoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.DenseDoubleMatrix1D;
 
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -34,7 +33,7 @@ public class Lognet {
       , String[] vnames
       , int maxit
       , int kopt
-      , GLMnet.Family family
+      , Family family
       )
       throws Exception {
 
@@ -99,7 +98,7 @@ public class Lognet {
 //      nobs=sum(o)
 //    }else o=NULL
 
-    if(family == GLMnet.Family.Binomial){
+    if(family == Family.Binomial){
       if(nc > 2) {
         throw new Exception("More than two classes; use multinomial family instead in call to glmnet");
       }

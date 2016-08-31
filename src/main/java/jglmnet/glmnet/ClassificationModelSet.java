@@ -65,27 +65,27 @@ public class ClassificationModelSet {
       throw new IllegalArgumentException(String.format("No model %d, allowed range 0-%d", i, numFits - 1));
     }
 
-    DoubleMatrix1D weights = new SparseDoubleMatrix1D(columns);
+    DoubleMatrix1D betas = new SparseDoubleMatrix1D(columns);
     for (int j = 0; j < coeffCnts[i]; ++j) {
-      weights.set(coeffPtrs[j] - 1, coeffs[i * maxPathFeatures + j]);
+      betas.set(coeffPtrs[j] - 1, coeffs[i * maxPathFeatures + j]);
     }
-    return new ClassificationModel(intercepts[i], weights, lambdas[i]);
+    return new ClassificationModel(intercepts[i], betas, lambdas[i]);
   }
 
-  public ClassificationModel getModel(double s) {
-    int pos = 0;
-    double minErr = Math.abs(s - lambdas[pos]);
-
-    for (int i = 0; i < lambdas.length; ++i) {
-      double err =  Math.abs(s - lambdas[i]);
-      if (err < minErr) {
-        minErr = err;
-        pos = i;
-      }
-    }
-
-    return getModel(pos);
-  }
+//  public ClassificationModel getModel(double s) {
+//    int pos = 0;
+//    double minErr = Math.abs(s - lambdas[pos]);
+//
+//    for (int i = 0; i < lambdas.length; ++i) {
+//      double err =  Math.abs(s - lambdas[i]);
+//      if (err < minErr) {
+//        minErr = err;
+//        pos = i;
+//      }
+//    }
+//
+//    return getModel(pos);
+//  }
 
   public void fixLambda() {
     if (lambdas.length > 2) {
@@ -93,21 +93,56 @@ public class ClassificationModelSet {
     }
   }
 
-  public double response(DoubleMatrix1D newx, double s) throws Exception {
+//  public double response(DoubleMatrix1D newx, double s) throws Exception {
+//
+//    if (newx == null) {
+//      throw new Exception("You need to supply a value for 'newx'");
+//    }
+//
+//    return getModel(s).estimate(newx);
+//  }
 
-    if (newx == null) {
-      throw new Exception("You need to supply a value for 'newx'");
+  public ClassificationModel coef(double s) throws Exception {
+    List<Double> lambdas = getLambdas();
+    int left = 0;
+    int right = lambdas.size() - 1;
+
+    for (int i = 0; i < lambdas.size(); ++i) {
+      double lambda = lambdas.get(i);
+      if (lambda >= s) {
+        left  = Math.max(left, i);
+      }
+      if (lambda <= s) {
+        right = Math.min(right, i);
+      }
     }
 
-    return getModel(s).estimate(newx);
+    double sfrac = (left == right)?1:(s - lambdas.get(right))/(lambdas.get(left) - lambdas.get(right));
+    ClassificationModel leftFit  = getModel(left);
+    double leftIntercept = sfrac*leftFit.getIntercept();
+    DoubleMatrix1D betas = leftFit.getBetas().copy();
+
+    if (sfrac != 1) {
+      ClassificationModel rightFit = getModel(right);
+      leftIntercept += (1 - sfrac)*rightFit.getIntercept();
+
+      DoubleMatrix1D rBetas = rightFit.getBetas();
+      for (int i = 0; i < columns; ++i) {
+        betas.set(i, sfrac*betas.get(i) + (1-sfrac)*rBetas.get(i));
+      }
+    }
+
+    final double intercept = leftIntercept;
+
+    return new ClassificationModel(intercept, betas, s);
   }
 
   public DoubleMatrix1D response(DoubleMatrix2D newx, double s) throws Exception {
-
     if (newx == null) {
       throw new Exception("You need to supply a value for 'newx'");
     }
 
+    //TODO: use ceofs to compute interpolated model
     List<Double> lambdas = getLambdas();
     int left = 0;
     int right = lambdas.size() - 1;
