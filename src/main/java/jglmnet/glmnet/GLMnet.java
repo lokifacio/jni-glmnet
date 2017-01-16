@@ -5,6 +5,7 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.DenseColumnDoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.DenseDoubleMatrix1D;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -17,7 +18,7 @@ public class GLMnet extends GLMnetBase {
   private Integer dfmax;
   private Integer pmax;
   // exlude?
-  DoubleMatrix1D penaltyFactor; // rep(1, nvars)
+
   boolean standardizeResponse = false;
 
   LogisticType logisticType = LogisticType.Newton;
@@ -95,6 +96,10 @@ public class GLMnet extends GLMnetBase {
     return this;
   }
 
+  public boolean hasOffset() {
+    return true;
+  }
+
   //nx = maximum number of variables allowed to enter all models
   //     along path (memory allocation, pmax > dfmax).
   public GLMnetBase setPMax(int value) {
@@ -114,7 +119,8 @@ public class GLMnet extends GLMnetBase {
   public ClassificationModelSet  fit
       ( DoubleMatrix2D x,
         DoubleMatrix1D y,
-        DoubleMatrix1D weights
+        DoubleMatrix1D weights,
+        DoubleMatrix1D offsets
       ) throws Exception {
 
     if (x.columns() < 2) {
@@ -158,9 +164,12 @@ public class GLMnet extends GLMnetBase {
     //      jd(1) != 0 => do not use variables jd(2)...jd(jd(1)+1)
     DenseDoubleMatrix1D jd = new DenseDoubleMatrix1D(1); // Temporalmente hasta que se haga el codigo de arriba
 
-    penaltyFactor = new DenseDoubleMatrix1D(nvars).assign(1);
-
-    DoubleMatrix1D vp = penaltyFactor;
+    if (vp == null) {
+      vp = new DenseDoubleMatrix1D(nvars);
+      Arrays.fill(vp.elements(), 1);
+    } else if (vp.size() != nvars){
+      throw new Exception("Invalid number of penalties.");
+    }
 
     //TODO: Parametros internos control glmnet
 //        internal.parms = glmnet.control()
@@ -233,22 +242,22 @@ public class GLMnet extends GLMnetBase {
     double   flmin = lambdaMinRatio;
     double[] ulam  = new double[]{0};
 
-    if (lambda == null) {
+    if (lambdas == null) {
       if (lambdaMinRatio >= 1) {
         throw new Exception("Lambda.min.ratio should be less than 1");
       }
     }
     else {
-      for(Double value : lambda) {
+      for(Double value : lambdas) {
         if (value < 0) {
           throw new Exception("Lambdas should be non-negative");
         }
       }
-      Collections.sort(lambda);
+      Collections.sort(lambdas);
 
       flmin = 1;
-      ulam = toArray(lambda);
-      nlam = lambda.size();
+      ulam = Utils.toDoubleArray(lambdas);
+      nlam = lambdas.size();
     }
 
     boolean isSparse = false;
@@ -293,65 +302,19 @@ public class GLMnet extends GLMnetBase {
         // y, weights, offset, type.gaussian, alpha, nobs, nvars,
         // jd, vp, cl, ne, nx, nlam, flmin, ulam, thresh, isd, intr,
         // vnames, maxit)
-
-//        int err = new Fortran().elnet(
-//            covUpdating,
-//            alpha,
-//            yc.elements(),
-//            weights,
-//            dcdm.elements(),
-//            mFlags,
-//            penalties,
-//            maxFinalFeatures,
-//            maxPathFeatures,
-//            numLambdas,
-//            _mlr,
-//            new double[100],
-//            convThreshold,
-//            standardize ? 1 : 0,
-//            maxIterations,
-//            outNumFits,
-//            outIntercepts,
-//            outCoeffs,
-//            outCoeffPtrs,
-//            outCoeffCnts,
-//            outRsq,
-//            outLambdas,
-//            outNumPasses);
         break;
       case Binomial:
-//        binomial = lognet(x, is.sparse, ix, jx, y, weights, offset,
-//            alpha, nobs, nvars, jd, vp, cl, ne, nx, nlam, flmin,
-//            ulam, thresh, isd, intr, vnames, maxit, kopt, family),
         mods = Lognet.fit(x, y, weights, null, alpha, jd, vp, cl, ne, nx, nlam, flmin, ulam, thresh, isd,intr,null,maxit,kopt, family);
         break;
+      case Poisson:
+        mods = Fishnet.fit(x, y, weights, offsets, alpha, jd, vp, cl, ne, nx, nlam, flmin, ulam, thresh, isd, intr,null,maxit);
     }
 
-//    fit = switch(family,, poisson = fishnet(x, is.sparse, ix, jx,
-//        y, weights, offset, alpha, nobs, nvars, jd, vp, cl, ne,
-//        nx, nlam, flmin, ulam, thresh, isd, intr, vnames, maxit),
-
-//        multinomial = lognet(x, is.sparse, ix, jx, y, weights,
-//            offset, alpha, nobs, nvars, jd, vp, cl, ne, nx, nlam,
-//            flmin, ulam, thresh, isd, intr, vnames, maxit, kopt,
-//            family), cox = coxnet(x, is.sparse, ix, jx, y, weights,
-//        offset, alpha, nobs, nvars, jd, vp, cl, ne, nx, nlam,
-//        flmin, ulam, thresh, isd, vnames, maxit), mgaussian = mrelnet(x,
-//        is.sparse, ix, jx, y, weights, offset, alpha, nobs,
-//        nvars, jd, vp, cl, ne, nx, nlam, flmin, ulam, thresh,
-//        isd, jsd, intr, vnames, maxit))
-
-    if (lambda == null) {
+    if (lambdas == null) {
       mods.fixLambda();
     }
 
-//    fit$nobs = nobs
-//    class(fit) = c(class(fit), "glmnet")
-//    fit
     return mods;
   }
 
-  double[] toArray(List<Double> list) {
-    return list.stream().mapToDouble(Double::doubleValue).toArray();
-  }
 }

@@ -19,7 +19,7 @@ import java.util.stream.DoubleStream;
  */
 public class Lognet {
 
-  //function (outlist, lambda, x, y, weights, offset, foldid, type.measure,
+  //function (outlist, lambdas, x, y, weights, offset, foldid, type.measure,
  //           grouped, keep = FALSE)
   public static Measures evaluate(List<ClassificationModelSet> outlist,
                                   List<Double> lambda,
@@ -27,20 +27,21 @@ public class Lognet {
                                   DoubleMatrix1D y,
                                   DoubleMatrix1D weights,
                                   List<Integer> foldid,
-                                  GLMnet.MeasureType type) {
+                                  MeasureType type,
+                                  boolean keep) {
 
 
-    GLMnet.MeasureType measureType = type;
+    MeasureType measureType = type;
 
 
-    if (type == GLMnet.MeasureType.Default) {
-      type = GLMnet.MeasureType.Deviance;
+    if (type == MeasureType.Default) {
+      type = MeasureType.Deviance;
     }
     boolean grouped = true; // TODO: pass as parameter
 
     //System.err.println("Only 'deviance', 'class', 'auc', 'mse' or 'mae'  available for binomial models; 'deviance' used");
-    if (measureType == GLMnet.MeasureType.Default) {
-      measureType = GLMnet.MeasureType.Deviance;
+    if (measureType == MeasureType.Default) {
+      measureType = MeasureType.Deviance;
     }
 
     final double prob_min = 1e-05;
@@ -53,9 +54,9 @@ public class Lognet {
 
     int nfolds = Folds.numFolds(foldid);
 
-    if ((N / nfolds < 10) && measureType == GLMnet.MeasureType.AUC) {
+    if ((N / nfolds < 10) && measureType == MeasureType.AUC) {
       System.err.println("Warning: Too few (< 10) observations per fold for type.measure='auc' in cv.lognet; changed to type.measure='deviance'. Alternatively, use smaller value for nfolds");
-      measureType = GLMnet.MeasureType.Deviance;
+      measureType = MeasureType.Deviance;
     }
 
     if ((N / nfolds < 3) && grouped) {
@@ -66,7 +67,7 @@ public class Lognet {
     DoubleMatrix1D offset = null;
 
     boolean isOffset = offset != null;
-    
+
     final double mlami = outlist.stream()
         .mapToDouble(fit ->
             fit.getLambdas().stream()
@@ -76,7 +77,6 @@ public class Lognet {
 
     List<Double> which_lam = lambda.stream().filter(l -> l >= mlami).collect(Collectors.toList());
 
-    //predmat = matrix(NA, nrow(y), length(lambda))
     DenseDoubleMatrix2D predmat = new DenseDoubleMatrix2D((int)y.size(), lambda.size());
     predmat.assign(Double.NaN);
 
@@ -100,9 +100,9 @@ public class Lognet {
     }
 
     long[] lambdaN = new long[lambda.size()];
-    DoubleMatrix2D cvraw = null;// = new DenseDoubleMatrix2D(nfolds, lambda.size());
-    if (type == GLMnet.MeasureType.AUC) {
-//      DenseDoubleMatrix2D good = new DenseDoubleMatrix2D(nfolds, lambda.size());
+    DoubleMatrix2D cvraw = null;// = new DenseDoubleMatrix2D(nfolds, lambdas.size());
+    if (measureType == MeasureType.AUC) {
+//      DenseDoubleMatrix2D good = new DenseDoubleMatrix2D(nfolds, lambdas.size());
 //
 //      for (int fold = 0; fold < nfolds; ++fold) {
 //        for (int s = 0; s < nlams[fold]; ++s) {
@@ -135,10 +135,9 @@ public class Lognet {
           //abs(y[, 1] - (1 - predmat)) + abs(y[, 2] - predmat)
           break;
         case Deviance:
-//          predmat = pmin(pmax(predmat, prob_min), prob_max)
           predmat.assign(v -> Math.min(Math.max(v, prob_min), prob_max));
           final DoubleMatrix1D ly = y.copy().assign(v -> (v == 0)?0:Math.log(v));
-          DoubleMatrix2D lp = predmat.copy();
+          DoubleMatrix2D lp = keep?predmat.copy():predmat;//.copy();
           for (int r = 0; r < lp.rows(); ++r) {
             final double ly_r = ly.get(r);
             if (y.get(r) > 0) {
@@ -157,16 +156,15 @@ public class Lognet {
       //TODO: Validate grouped = False
 
       if (grouped) {
-        Pair<DoubleMatrix2D, double[]> cvob = cvcompute(cvraw, weights, foldid, nlam);
-        cvraw = cvob.getFirst();
-        weights = new DenseDoubleMatrix1D(cvob.getSecond());
+        Computation cvob = Computation.cvcompute(cvraw, weights, foldid, nlam);
+        cvraw = cvob.cvram;
+        weights = cvob.weights;
         lambdaN = new long[nlam];
         for (int i = 0; i < nlam; ++i) {
           lambdaN[i] = nfolds;
         }
       }
     }
-
 
     Measures measures = new Measures();
 
@@ -187,36 +185,5 @@ public class Lognet {
 //      out$fit.preval = predmat
 
     return measures;
-  }
-
-  static Pair<DoubleMatrix2D, double[]> cvcompute(DoubleMatrix2D mat, DoubleMatrix1D weights, List<Integer> foldid, int nlam) {
-    int nfolds = Folds.numFolds(foldid);
-    double wisum[] = new double[nfolds];
-    for (int i = 0; i < foldid.size(); ++i) {
-      int fold = foldid.get(i);
-      wisum[fold] += weights.get(i);
-    }
-
-    DoubleMatrix2D outmat = new DenseDoubleMatrix2D(nfolds, mat.columns());
-    outmat.assign(0);
-
-    DoubleMatrix2D good = new DenseDoubleMatrix2D(nfolds, mat.columns());
-    outmat.assign(0);
-
-    mat.assign(v -> Double.isInfinite(v)?Double.NaN:v);
-
-    for (int l = 0; l < mat.columns(); ++l) {
-      for (int i = 0; i < foldid.size(); ++i) {
-        int fold = foldid.get(i);
-        outmat.set(fold, l, outmat.get(fold, l) + mat.get(i, l)*weights.get(i));
-      }
-    }
-
-    for (int i = 0; i < nfolds; ++i) {
-      final double foldWeight = wisum[i];
-      outmat.viewRow(i).assign(v -> v/foldWeight);
-    }
-
-    return new Pair<>(outmat, wisum);
   }
 }

@@ -1,5 +1,7 @@
-#include "glmnet_GLMNet.h"
+#include "jglmnet_glmnet_Fortran.h"
 #include <stdlib.h>
+
+//                         newGLMnet (5/12/14)
 
 extern void elnet_(
             const int* cov_updating,
@@ -34,7 +36,7 @@ extern void elnet_(
            );
           
 
-JNIEXPORT jint JNICALL Java_glmnet_GLMNet_elnet
+JNIEXPORT jint JNICALL Java_jglmnet_glmnet_Fortran_elnet
   (JNIEnv *env, jobject thiz, jint covUpdating, jdouble alpha, jdoubleArray y, jdoubleArray w, jdoubleArray x, jintArray mFlags, jdoubleArray penalties, jint maxFinal, jint maxPath, jint numLambdas, jdouble lambdaMinRatio, jdoubleArray userLambdas, jdouble convThreshold, jint standardize, jint maxit, jintArray outNumFits, jdoubleArray outIntercepts, jdoubleArray outCoeffs, jintArray outCoeffPtrs, jintArray outCoeffCnts, jdoubleArray outRsq, jdoubleArray outLambdas, jintArray outNumPasses)
 {
   jsize yl = (*env)->GetArrayLength(env, y);
@@ -138,11 +140,11 @@ extern void spelnet_(
            );
           
 
-JNIEXPORT jint JNICALL Java_glmnet_GLMNet_spelnet
+JNIEXPORT jint JNICALL Java_jglmnet_glmnet_Fortran_spelnet
   (JNIEnv *env, jobject thiz, jint covUpdating, jdouble alpha, jdoubleArray y, jdoubleArray w, jdoubleArray xx, jintArray xi, jintArray xp, jintArray mFlags, jdoubleArray penalties, jint maxFinal, jint maxPath, jint numLambdas, jdouble lambdaMinRatio, jdoubleArray userLambdas, jdouble convThreshold, jint standardize, jint maxit, jintArray outNumFits, jdoubleArray outIntercepts, jdoubleArray outCoeffs, jintArray outCoeffPtrs, jintArray outCoeffCnts, jdoubleArray outRsq, jdoubleArray outLambdas, jintArray outNumPasses)
 {
   jsize yl = (*env)->GetArrayLength(env, y);
-  jsize xpl = (*env)->GetArrayLength(env, xp) - 1;   /* why -1 ??? */
+  jsize xpl = (*env)->GetArrayLength(env, xp) - 1;   // why -1 ???
   jdouble *yv = (*env)->GetDoubleArrayElements(env, y, NULL);
   jdouble *wv = (*env)->GetDoubleArrayElements(env, w, NULL);
   jdouble *xxv = (*env)->GetDoubleArrayElements(env, xx, NULL);
@@ -212,19 +214,51 @@ JNIEXPORT jint JNICALL Java_glmnet_GLMNet_spelnet
   return error;
 }
 
+/*
+parm ~ alpha
+no ~ num_observations
+ni ~ num_predictors
+nc ~ num_classes
+x ~ x
+y ~ observations
+o ~ offsets
+jd ~ deletion_flags
+vp ~ predictor_penalties
+cl ~ coef_limits
+ne ~ max_final_features
+nx ~ max_path_features
+nlam ~ num_lambdas
+flmin ~ lambda_min_ratio
+ulam ~ user_defined_lambdas
+thr ~ convergence_threshold
+isd ~ standardize_flag
+intr ~ intercept_flag
+maxit
+kopt
+// Outputes
+lmu ~ num_fits
+a0 ~ intercetps
+ca ~ coeffs
+ia ~ coeffs_ptrs
+nin ~coeff_counts
+dev0 ~ dev0
+fdev ~ fdev
+alm ~ lambdas_used
+nlp ~ nun_passes
+jerr ~ errror flag
+*/
+
 extern void lognet_(
             const double* alpha,
             const int* num_observations,
             const int* num_predictors,
-
 	    const int* num_classes,
-
             const double* x,
-
             double* observations,              // vector, overwritten
             double* offsets,                   // vector, overwritten
-            const int* flags,                  // vector
+            const int* deletion_flags,         // vector
             const double* predictor_penalties, // vector
+            const double* coef_limits,                
             const int* max_final_features,
             const int* max_path_features,
             const int* num_lambdas,
@@ -232,6 +266,7 @@ extern void lognet_(
             const double* user_defined_lambdas, // vector
             const double* convergence_threshold,
             const int* standardize_flag, // standardize observations
+            const int* intercept_flag,   //
             const int* maxit,           // maximum iterations
 	    const int* kopt,            // options: 0=Newton-Raphson, 1=modified
             // Outputs
@@ -248,8 +283,8 @@ extern void lognet_(
            );
 
 
-JNIEXPORT jint JNICALL Java_glmnet_GLMNet_lognet
-(JNIEnv *env, jobject thiz, jdouble alpha, jint nc, jdoubleArray y, jdoubleArray offsets, jdoubleArray x, jintArray mFlags, jdoubleArray penalties, jint maxFinal, jint maxPath, jint numLambdas, jdouble lambdaMinRatio, jdoubleArray userLambdas, jdouble convThreshold, jint standardize, jint maxit, jint kopt, jintArray outNumFits, jdoubleArray outIntercepts, jdoubleArray outCoeffs, jintArray outCoeffPtrs, jintArray outCoeffCnts, jdoubleArray outDev0, jdoubleArray outFdev, jdoubleArray outLambdas, jintArray outNumPasses)
+JNIEXPORT jint JNICALL Java_jglmnet_glmnet_Fortran_lognet
+(JNIEnv *env, jobject thiz, jdouble alpha, jint nc, jdoubleArray y, jdoubleArray offsets, jdoubleArray x, jintArray mFlags, jdoubleArray penalties, jdoubleArray coeffLimits, jint maxFinal, jint maxPath, jint numLambdas, jdouble lambdaMinRatio, jdoubleArray userLambdas, jdouble convThreshold, jint standardize, jint intercept, jint maxit, jint kopt, jintArray outNumFits, jdoubleArray outIntercepts, jdoubleArray outCoeffs, jintArray outCoeffPtrs, jintArray outCoeffCnts, jdoubleArray outDev0, jdoubleArray outFdev, jdoubleArray outLambdas, jintArray outNumPasses)
 {
   jsize yl = (*env)->GetArrayLength(env, y);
   if (nc > 2) {
@@ -263,6 +298,7 @@ JNIEXPORT jint JNICALL Java_glmnet_GLMNet_lognet
   jdouble *xv = (*env)->GetDoubleArrayElements(env, x, NULL);
   jint *mFlagsV = (*env)->GetIntArrayElements(env, mFlags, NULL);
   jdouble *penaltiesV = (*env)->GetDoubleArrayElements(env, penalties, NULL);
+  jdouble *coeffLimitsV = (*env)->GetDoubleArrayElements(env, coeffLimits, NULL);
   jdouble *userLambdasV = (*env)->GetDoubleArrayElements(env, userLambdas, NULL);
   jint *numFitsV = (*env)->GetIntArrayElements(env, outNumFits, NULL);
   jdouble *interceptsV = (*env)->GetDoubleArrayElements(env, outIntercepts, NULL);
@@ -285,6 +321,7 @@ JNIEXPORT jint JNICALL Java_glmnet_GLMNet_lognet
 	   ov,
 	   mFlagsV,
 	   penaltiesV,
+           coeffLimitsV,
 	   &maxFinal,
 	   &maxPath,
 	   &numLambdas,
@@ -292,6 +329,7 @@ JNIEXPORT jint JNICALL Java_glmnet_GLMNet_lognet
 	   userLambdasV,
 	   &convThreshold,
 	   &standardize,
+           &intercept,
 	   &maxit,
 	   &kopt,
 	   numFitsV,
@@ -311,6 +349,7 @@ JNIEXPORT jint JNICALL Java_glmnet_GLMNet_lognet
   (*env)->ReleaseDoubleArrayElements(env, x, xv, JNI_ABORT);
   (*env)->ReleaseIntArrayElements(env, mFlags, mFlagsV, JNI_ABORT);
   (*env)->ReleaseDoubleArrayElements(env, penalties, penaltiesV, JNI_ABORT);
+  (*env)->ReleaseDoubleArrayElements(env, coeffLimits, coeffLimitsV, JNI_ABORT);
   (*env)->ReleaseDoubleArrayElements(env, userLambdas, userLambdasV, JNI_ABORT);
   (*env)->ReleaseIntArrayElements(env, outNumFits, numFitsV, 0);
   (*env)->ReleaseDoubleArrayElements(env, outIntercepts, interceptsV, 0);
@@ -364,7 +403,7 @@ extern void splognet_(
            );
 
 
-JNIEXPORT jint JNICALL Java_glmnet_GLMNet_splognet
+JNIEXPORT jint JNICALL Java_jglmnet_glmnet_Fortran_splognet
   (JNIEnv *env, jobject thiz, jdouble alpha, jint nc, jdoubleArray y, jdoubleArray offsets, jdoubleArray xx, jintArray xi, jintArray xp, jintArray mFlags, jdoubleArray penalties, jint maxFinal, jint maxPath, jint numLambdas, jdouble lambdaMinRatio, jdoubleArray userLambdas, jdouble convThreshold, jint standardize, jint maxit, jint kopt, jintArray outNumFits, jdoubleArray outIntercepts, jdoubleArray outCoeffs, jintArray outCoeffPtrs, jintArray outCoeffCnts, jdoubleArray outDev0, jdoubleArray outFdev, jdoubleArray outLambdas, jintArray outNumPasses)
 {
   jsize yl = (*env)->GetArrayLength(env, y);

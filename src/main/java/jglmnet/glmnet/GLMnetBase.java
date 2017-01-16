@@ -1,5 +1,8 @@
 package jglmnet.glmnet;
 
+import cern.colt.matrix.tdouble.impl.DenseDoubleMatrix1D;
+
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -7,13 +10,13 @@ import java.util.List;
 /**
  * @author Jorge Peña
  */
-public class GLMnetBase {
+public class GLMnetBase implements Serializable {
 
   // Default values taken from glmnet.R
   protected double alpha;
   protected int nlam;
   protected Double lambdaMinRatio;
-  protected List<Double> lambda;
+  protected List<Double> lambdas;
   protected Family family;
   protected int maxit;
   protected boolean intercept;
@@ -21,6 +24,7 @@ public class GLMnetBase {
   protected double thresh;
   protected List<Double> lowerLimits;
   protected List<Double> upperLimits;
+  protected DenseDoubleMatrix1D vp;
 
   public GLMnetBase setAlpha(double value) {
     alpha = value;
@@ -46,7 +50,7 @@ public class GLMnetBase {
   }
 
   public GLMnetBase setLambdas(List<Double> lambdas) {
-    lambda = lambdas;
+    this.lambdas = lambdas;
     return this;
   }
 
@@ -89,11 +93,16 @@ public class GLMnetBase {
     return this;
   }
 
+  public GLMnetBase setPenaltyFactor(DenseDoubleMatrix1D penaltyFactor) {
+    vp = penaltyFactor;
+    return this;
+  }
+
   public GLMnetBase() {
     alpha = 1.0;
     nlam = 100;
     lambdaMinRatio = null;
-    lambda = null;
+    lambdas = null;
     family = Family.Binomial;
     maxit = (int)1e5;
     intercept = true;
@@ -101,13 +110,14 @@ public class GLMnetBase {
     thresh = 1e-07;
     lowerLimits = new ArrayList<>();
     upperLimits = new ArrayList<>();
+    vp = null;
   }
 
   public GLMnetBase(GLMnetBase other) {
     alpha          = other.alpha;
     nlam           = other.nlam;
     lambdaMinRatio = other.lambdaMinRatio;
-    lambda         = other.lambda;
+    lambdas = other.lambdas;
     family         = other.family;
     maxit          = other.maxit;
     intercept      = other.intercept;
@@ -115,6 +125,7 @@ public class GLMnetBase {
     thresh         = other.thresh;
     lowerLimits    = other.lowerLimits;
     upperLimits    = other.upperLimits;
+    vp             = other.vp;
   }
 
 

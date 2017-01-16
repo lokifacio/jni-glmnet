@@ -2,6 +2,7 @@ package jglmnet.glmnet.cv;
 
 import cern.colt.matrix.tdouble.DoubleMatrix1D;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
+import cern.colt.matrix.tint.IntMatrix1D;
 import jglmnet.glmnet.ClassificationModelSet;
 import jglmnet.glmnet.Family;
 import jglmnet.glmnet.GLMnetBase;
@@ -17,11 +18,9 @@ import java.util.stream.IntStream;
  * @author Jorge Peña
  */
 public class GLMnet extends GLMnetBase{
-//  function (x, y, weights, offset = NULL, lambda = NULL, type.measure = c("mse",
+//  function (x, y, weights, offset = NULL, lambdas = NULL, type.measure = c("mse",
 //                "deviance", "class", "auc", "mae"), nfolds = 10, foldid,
 //  grouped = TRUE, keep = FALSE, parallel = FALSE, ...)
-
-  public enum MeasureType {Default, MSE, Deviance, Class, AUC, MAE}
 
   private List<Double> lambda;
   private int nfolds = 10;
@@ -122,30 +121,29 @@ public class GLMnet extends GLMnetBase{
   public Model fit
   (DoubleMatrix2D x,
    DoubleMatrix1D y,
-   DoubleMatrix1D weights //TODO: Pesos por defecto: 1
+   DoubleMatrix1D weights, //TODO: Pesos por defecto: 1
+   DoubleMatrix1D offsets
   ) throws Exception {
     if (lambda != null && lambda.size() < 2) {
-      throw new Exception("Need more than one value of lambda for cv.GLMnet");
+      throw new Exception("Need more than one value of lambdas for cv.GLMnet");
     }
 
     int N = x.rows();
 
     jglmnet.glmnet.GLMnet glmnet = new jglmnet.glmnet.GLMnet(this); // Copies common params
 
-    ClassificationModelSet glmnetObject = glmnet.fit(x, y, weights);
+    ClassificationModelSet glmnetObject = glmnet.fit(x, y, weights, offsets);
     List<Double> lambdas = glmnetObject.getLambdas();
 
-    boolean isOffset = false; //TODO: configurar segun los parametros
+    boolean isOffset = glmnetObject.hasOffset();
 
-    //TODO: habria q pasarle los parametros
-//    if (inherits(glmnet.object, "multnet") && !glmnet.object$grouped) {
+    //    if (inherits(glmnet.object, "multnet") && !glmnet.object$grouped) {
 //      nz = predict(glmnet.object, type = "nonzero")
 //      nz = sapply(nz, function(x) sapply(x, length))
 //      nz = ceiling(apply(nz, 1, median))
 //    }
 //    else {
-//      nz = sapply(predict(glmnet.object, type = "nonzero"),length)
-//    }
+    IntMatrix1D nz = glmnetObject.nonZero();
 
     if (foldid == null) {
       foldid = Folds.generateFoldIds(nfolds, N);
@@ -169,14 +167,9 @@ public class GLMnet extends GLMnetBase{
 
             Sample sample = Folds.trainSamples(foldid, fold, x, y, weights, null);
 
-            if (isOffset) {
-              //TODO: Subsample offset
-              //glmnet.setOffset
-            }
-
             ClassificationModelSet modelSet = null;
             try {
-              modelSet = glmnet_i.fit(sample.x, sample.y, sample.w);
+              modelSet = glmnet_i.fit(sample.x, sample.y, sample.w, sample.o);
             } catch (Exception e) {
               e.printStackTrace();
             }
@@ -185,31 +178,33 @@ public class GLMnet extends GLMnetBase{
           .collect(Collectors.toList()) // serializes model results
           .stream()
           .sorted((p1, p2) -> Integer.compare(p1.getFirst(), p2.getFirst()))
-          .map(p -> p.getSecond())
+          .map(Pair::getSecond)
           .collect(Collectors.toList());
     } else {
       outlist = new ArrayList<>(nfolds);
 
       for (int fold = 0; fold < nfolds; ++fold) {
-        jglmnet.glmnet.GLMnet glmnet_i = new jglmnet.glmnet.GLMnet();
+        jglmnet.glmnet.GLMnet glmnet_i = new jglmnet.glmnet.GLMnet(this);
 
-        Sample sample = Folds.trainSamples(foldid, fold, x, y, weights, null);
+        Sample sample = Folds.trainSamples(foldid, fold, x, y, weights, offsets);
 
-        if (isOffset) {
-          //TODO: Subsample offset
-          //glmnet.setOffset
-        }
-
-        outlist.add(glmnet_i.fit(sample.x, sample.y, sample.w));
+        outlist.add(glmnet_i.fit(sample.x, sample.y, sample.w, sample.o));
       }
     }
 
-    //TODO: tener en cuenta el resto de familias
+    Measures measures = null;
 
-    //model.measures == csvstuff
-    Measures measures = Lognet.evaluate(outlist, lambdas, x, y, weights, foldid, measureType);
-//      lambda = glmnet.object$lambda
-
+    switch (family) {
+      case Binomial:
+        measures = Lognet.evaluate(outlist, lambdas, x, y, weights, foldid, measureType, keep);
+        break;
+      case Poisson:
+        measures = Fishnet.evaluate(outlist, lambdas, x, y, weights, offsets, foldid, measureType, keep);
+        break;
+      default:
+        //TODO
+        throw new Exception("Unsupported family");
+    }
 
     List<Double> cvm  = measures.cvm;
     List<Double> cvsd = measures.cvsd;
@@ -220,7 +215,7 @@ public class GLMnet extends GLMnetBase{
 //      nz = nz[!nas]
 //    }
 
-//    out = list(lambda = lambda, cvm = cvm, cvsd = cvsd, cvup = cvm +
+//    out = list(lambdas = lambdas, cvm = cvm, cvsd = cvsd, cvup = cvm +
 //        cvsd, cvlo = cvm - cvsd, nzero = nz, name = cvname, glmnet.model = glmnet.object)
 //
 //    if (keep) {
@@ -241,11 +236,14 @@ public class GLMnet extends GLMnetBase{
     return new Model(lambdaMin, lambda1se, glmnetObject, measures);
   }
 
-  private Pair<Double, Double> getMin(List<Double> lambda, List<Double> cvm, List<Double> cvsd) {
+  private Pair<Double, Double> getMin(List<Double> lambda, List<Double> cvm, List<Double> cvsd) throws Exception {
+    if (cvm.isEmpty()) {
+      throw new Exception("Empty cv measurements");
+    }
+
     final double cvmin = Collections.min(cvm);
 
     double lambdaMin = 0;
-    double lambda1se = 0;
     double semin = -1;
 
     for (int i = 0; i < lambda.size(); ++i) {
@@ -255,7 +253,7 @@ public class GLMnet extends GLMnetBase{
       }
     }
 
-    lambda1se = lambdaMin;
+    double lambda1se = lambdaMin;
 
     for (int i = 0; i < lambda.size(); ++i) {
       if (cvm.get(i) <= semin && lambda.get(i) > lambda1se) {

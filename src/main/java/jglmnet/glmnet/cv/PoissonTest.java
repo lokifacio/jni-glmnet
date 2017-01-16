@@ -1,8 +1,11 @@
 package jglmnet.glmnet.cv;
 
+import cern.colt.matrix.tdouble.DoubleMatrix1D;
+import cern.colt.matrix.tdouble.DoubleMatrix2D;
+import cern.colt.matrix.tdouble.impl.DenseColumnDoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.DenseDoubleMatrix1D;
-import cern.colt.matrix.tdouble.impl.DenseDoubleMatrix2D;
 import jglmnet.glmnet.ClassificationModel;
+import jglmnet.glmnet.Family;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -14,20 +17,23 @@ import java.util.List;
 /**
  * @author Jorge Peña
  */
-public class GLMnetTest {
+public class PoissonTest {
 
   public static void main(String[] args) throws Exception {
-    InputStream input = GLMnetTest.class.getClassLoader().getResourceAsStream("binary.csv");
+    InputStream input = PoissonTest.class.getClassLoader().getResourceAsStream("poisson.csv");
     BufferedReader reader = new BufferedReader(new InputStreamReader(input));
 
     // Saltamos la cabecera
     String line = reader.readLine();
 
-    int rows = 400;
-    int cols = 3;
+    int rows  = 500;
+    int nvars = 20;
 
-    DenseDoubleMatrix1D y = new DenseDoubleMatrix1D(rows);
-    DenseDoubleMatrix2D dm = new DenseDoubleMatrix2D(rows, cols);
+    DoubleMatrix1D y = new DenseDoubleMatrix1D(rows);
+    DoubleMatrix2D x = new DenseColumnDoubleMatrix2D(rows, nvars);
+    DenseDoubleMatrix1D weights = new DenseDoubleMatrix1D(rows);
+    DenseDoubleMatrix1D offsets = new DenseDoubleMatrix1D(rows);
+
     int r = 0;
     while ((line = reader.readLine()) != null) {
       String[] row = line.split(",");
@@ -35,51 +41,44 @@ public class GLMnetTest {
       double target = Double.parseDouble(row[0]);
       y.set(r, target);
 
-      for (int c = 0; c < cols; c++) {
-        dm.set(r, c, Double.parseDouble(row[1 + c]));
+      for (int c = 0; c < nvars; c++) {
+        x.set(r, c, Double.parseDouble(row[1 + c]));
       }
+
+      weights.set(r, Double.parseDouble(row[nvars + 1]));
+      offsets.set(r, Double.parseDouble(row[nvars + 2]));
 
       r++;
     }
 
     for (int i = 0; i < 10; ++i) {
       System.out.printf("%.3g\t", y.get(i));
-      for (int c = 0; c < cols; ++c) {
-        System.out.printf("%.3g\t", dm.get(i, c));
+      for (int c = 0; c < nvars; ++c) {
+        System.out.printf("%.3g\t", x.get(i, c));
       }
       System.out.println();
     }
 
-    DenseDoubleMatrix1D weights = new DenseDoubleMatrix1D(rows);
-    double w = 0.25;
-    for (int i = 0; i < rows; ++i) {
-      weights.set(i, w);
-      w += 0.25;
-      if (w > 1) {
-        w = 0.25;
-      }
-    }
-
-
     int nfolds = 10;
-    List<Integer> foldid = new ArrayList<>(rows);
+    List<Integer> foldIds = new ArrayList<>(rows);
 
     int fold = 0;
     for (int i = 0; i < rows; ++i) {
-      foldid.add(fold);
+      foldIds.add(fold + 1);
       fold = (fold + 1) % nfolds;
     }
 
     //long sstart = System.currentTimeMillis();
 
-    double numTests = 100;
+    double numTests = 200;
     long start = System.currentTimeMillis();
     for (int i = 0; i < numTests; ++i) {
       GLMnet glmnet = new GLMnet()
-          .setFoldId(foldid)
+          .setFoldId(foldIds)
+          .setFamily(Family.Poisson)
           .setParallel(false);
 
-      Model model = glmnet.fit(dm, y, weights);
+      Model model = glmnet.fit(x, y, weights, offsets);
 
       if (i == numTests - 1) {
         System.out.println("\tLambda.min: " + model.lambdaMin);
@@ -91,8 +90,8 @@ public class GLMnetTest {
           System.out.println("\tLambda: " + mod.getLambda());
           System.out.println("\tIntecept: " + mod.getIntercept());
           System.out.println("\tBetas:\n\t\t" + mod.getBetas().toString());
-          System.out.println("\tPred 0: " + mod.estimate(dm.viewRow(0)));
-          System.out.println("\tPred 1: " + mod.estimate(dm.viewRow(1)));
+          System.out.println("\tPred 0: " + mod.response(x.viewRow(0), offsets.get(0)));
+          System.out.println("\tPred 1: " + mod.response(x.viewRow(1), offsets.get(1)));
           System.out.println();
         }
       }

@@ -61,7 +61,7 @@ public class GLMnetTest {
     GLMnet GLMnet = new GLMnet()
         .setLambdas(Arrays.asList(0.0, 0.05));
 
-    ClassificationModelSet mods = GLMnet.fit(dm, y, weights);
+    ClassificationModelSet mods = GLMnet.fit(dm, y, weights, weights);
 
     for (int i = 0; i < mods.getNumFits(); ++i) {
       ClassificationModel mod = mods.getModel(i);
@@ -69,8 +69,8 @@ public class GLMnetTest {
       System.out.println("\tLambda: " + mod.getLambda());
       System.out.println("\tIntecept: " + mod.getIntercept());
       System.out.println("\tBetas:\n\t\t" + mod.getBetas().toString());
-      System.out.println("\tPred 0: " + mod.estimate(dm.viewRow(0)));
-      System.out.println("\tPred 1: " + mod.estimate(dm.viewRow(1)));
+      System.out.println("\tPred 0: " + mod.response(dm.viewRow(0)));
+      System.out.println("\tPred 1: " + mod.response(dm.viewRow(1)));
     }
   }
 }
