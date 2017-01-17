@@ -8,3 +8,7 @@ classes
 jglmnet_glmnet_GLMNet.h
 bin
 .lein-deps-sum
+target
+.idea
+*.iml
+.Rhistory

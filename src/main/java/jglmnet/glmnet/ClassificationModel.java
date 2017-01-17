@@ -18,11 +18,13 @@ public abstract class ClassificationModel implements Serializable {
   private final double intercept;
   private final DoubleMatrix1D betas;
   private final double lambda;
+  private boolean hasOffset;
 
-  ClassificationModel(double intercept, DoubleMatrix1D betas, double lambda) {
+  ClassificationModel(double intercept, DoubleMatrix1D betas, double lambda, boolean hasOffset) {
     this.betas = betas;
     this.intercept = intercept;
     this.lambda = lambda;
+    this.hasOffset = hasOffset;
   }
 
   public double getIntercept() { return intercept; }
@@ -84,7 +86,9 @@ public abstract class ClassificationModel implements Serializable {
     return response;
   }
 
-  protected abstract boolean requiresOffset();
+  public boolean requiresOffset() {
+    return hasOffset;
+  }
 
   public abstract double invLink(double x);
 }

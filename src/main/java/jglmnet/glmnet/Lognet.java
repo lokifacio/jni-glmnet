@@ -15,13 +15,8 @@ class Lognet {
 
   private static class ClassificationModel extends jglmnet.glmnet.ClassificationModel {
 
-    ClassificationModel(double intercept, DoubleMatrix1D betas, double lambda) {
-      super(intercept, betas, lambda);
-    }
-
-    @Override
-    protected boolean requiresOffset() {
-      return false;
+    ClassificationModel(double intercept, DoubleMatrix1D betas, double lambda, boolean hasOffset) {
+      super(intercept, betas, lambda, hasOffset);
     }
 
     @Override
@@ -42,7 +37,7 @@ class Lognet {
 
     @Override
     jglmnet.glmnet.ClassificationModel createModel(double intercept, DoubleMatrix1D betas, double lambda) {
-      return new ClassificationModel(intercept, betas, lambda);
+      return new ClassificationModel(intercept, betas, lambda, hasOffset());
     }
   }
 
@@ -115,47 +110,51 @@ class Lognet {
     }
 
     // o(no,nc) = observation off-sets for each class
-    DenseDoubleMatrix1D o = null;
-    // check if any rows of y sum to zero, and if so deal with them
-    //weights=drop(y%*%rep(1,nc))
-    //o=weights>0
-//    if(!all(o)){ #subset the data
-//        y=y[o,]
-//      if(is.sparse){ # we have to subset this beast with care
-//          x=sparseMatrix(i=jx,p=ix-1,x=x,dims=c(nobs,nvars))[o,,drop=FALSE]
-//        ix=as.integer(x@p+1)
-//        jx=as.integer(x@i+1)
-//        x=as.double(x@x)
-//      }
-//      else x=x[o,,drop=FALSE]
-//      nobs=sum(o)
-//    }else o=NULL
+    DoubleMatrix1D o = weights.copy().assign(v -> v>0?1:0);
+    if (o.zSum() < o.size()) { // subset the data
+      // y=y[o,]
+      // if(is.sparse){ # we have to subset this beast with care
+      //   x=sparseMatrix(i=jx,p=ix-1,x=x,dims=c(nobs,nvars))[o,,drop=FALSE]
+      //   ix=as.integer(x@p+1)
+      //   jx=as.integer(x@i+1)
+      //   x=as.double(x@x)
+      // }
+      // else x=x[o,,drop=FALSE]
+      // nobs=sum(o)
+    } else {
+      o = null;
+    }
 
     if(family == Family.Binomial){
       if(nc > 2) {
         throw new Exception("More than two classes; use multinomial family instead in call to glmnet");
       }
 
-      //    nc=1 => binomial two-class logistic regression
-      //           (all output references class 1)
-      nc = 1;
-      //Esto creo q ya está //y=y[,c(2,1)]#fortran lognet models the first column; we prefer the second (for 0/1 data)
+      nc = 1; // binomial two-class logistic regression (all output references class 1)
     }
 
-    boolean isOffset = false;
+    boolean isOffset = offset != null;
 
-    if(offset == null){
+    if(isOffset){
+      if (o != null) {
+        // o = offset[o,]# we might have zero weights
+      } else {
+        o = offset;
+      }
+
+      if(o.size() != nobs) {
+        throw new Exception("offset should have the same number of values as observations in binomial/multinomial call to glmnet");
+      }
+      // TODO use 2D weight matrix
+//      if (o.columns == 1 && nc == 1) {
+//        // offset=cbind(offset,-offset)
+//      }
+//      if(family == Family.Multinomial && o.columns() != nc) {
+//        throw new Exception("offset should have same shape as y in multinomial call to glmnet");
+//      }
+    } else {
       o = new DenseDoubleMatrix1D(nobs);
       o.assign(0);
-    } else {
-      // TODO: asignar offsets
-      //if(!is.null(o))offset=offset[o,]# we might have zero weights
-      // do=dim(offset)
-      //if(do[[1]]!=nobs)stop("offset should have the same number of values as observations in binomial/multinomial call to glmnet",call.=FALSE)
-      //if((do[[2]]==1)&(nc==1))offset=cbind(offset,-offset)
-      //if((family=="multinomial")&(do[[2]]!=nc))stop("offset should have same shape as y in multinomial call to glmnet",call.=FALSE)
-
-      isOffset = true;
     }
 
     int err = 0;
@@ -201,7 +200,7 @@ class Lognet {
           alpha,
           nc,
           dy.elements(),
-          o.elements(),
+          o.toArray(),
           dcx.elements(),
           new int[1],
           vp.elements(),

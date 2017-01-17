@@ -304,13 +304,13 @@ public class GLMnet extends GLMnetBase {
         // vnames, maxit)
         break;
       case Binomial:
-        mods = Lognet.fit(x, y, weights, null, alpha, jd, vp, cl, ne, nx, nlam, flmin, ulam, thresh, isd,intr,null,maxit,kopt, family);
+        mods = Lognet.fit(x, y, weights, offsets, alpha, jd, vp, cl, ne, nx, nlam, flmin, ulam, thresh, isd,intr,null,maxit,kopt, family);
         break;
       case Poisson:
         mods = Fishnet.fit(x, y, weights, offsets, alpha, jd, vp, cl, ne, nx, nlam, flmin, ulam, thresh, isd, intr,null,maxit);
     }
 
-    if (lambdas == null) {
+    if (lambdas == null && mods != null) {
       mods.fixLambda();
     }
 

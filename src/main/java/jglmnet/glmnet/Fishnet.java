@@ -14,16 +14,8 @@ class Fishnet {
 
   private static class ClassificationModel extends jglmnet.glmnet.ClassificationModel {
 
-    private boolean hasOffset;
-
     ClassificationModel(double intercept, DoubleMatrix1D betas, double lambda, boolean hasOffset) {
-      super(intercept, betas, lambda);
-      this.hasOffset = hasOffset;
-    }
-
-    @Override
-    protected boolean requiresOffset() {
-      return false;
+      super(intercept, betas, lambda, hasOffset);
     }
 
     @Override

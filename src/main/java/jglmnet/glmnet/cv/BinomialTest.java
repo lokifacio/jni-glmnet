@@ -88,8 +88,8 @@ public class BinomialTest {
           System.out.println("\tLambda: " + mod.getLambda());
           System.out.println("\tIntecept: " + mod.getIntercept());
           System.out.println("\tBetas:\n\t\t" + mod.getBetas().toString());
-          System.out.println("\tPred 0: " + mod.response(x.viewRow(0)));
-          System.out.println("\tPred 1: " + mod.response(x.viewRow(1)));
+          System.out.println("\tPred 0: " + mod.response(x.viewRow(0), offset.get(0)));
+          System.out.println("\tPred 1: " + mod.response(x.viewRow(1), offset.get(1)));
           System.out.println();
         }
       }

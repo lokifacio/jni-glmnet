@@ -26,6 +26,7 @@ public class Lognet {
                                   DoubleMatrix2D x,
                                   DoubleMatrix1D y,
                                   DoubleMatrix1D weights,
+                                  DoubleMatrix1D offset,
                                   List<Integer> foldid,
                                   MeasureType type,
                                   boolean keep) {
@@ -64,8 +65,6 @@ public class Lognet {
       grouped = false;
     }
 
-    DoubleMatrix1D offset = null;
-
     boolean isOffset = offset != null;
 
     final double mlami = outlist.stream()
@@ -89,7 +88,7 @@ public class Lognet {
       for (int l = 0; l < which_lam.size(); ++l) {
         double s = lambda.get(l);
         try {
-          DoubleMatrix1D response = fitobj.response(test.x, s);
+          DoubleMatrix1D response = fitobj.response(test.x, test.o, s);
           for (int r = 0; r < response.size(); ++r) {
             predmat.set(test.pos.get(r), l, response.get(r));
           }

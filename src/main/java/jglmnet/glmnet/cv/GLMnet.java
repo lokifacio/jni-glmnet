@@ -165,7 +165,7 @@ public class GLMnet extends GLMnetBase{
           .map(fold -> {
             jglmnet.glmnet.GLMnet glmnet_i = new jglmnet.glmnet.GLMnet();
 
-            Sample sample = Folds.trainSamples(foldid, fold, x, y, weights, null);
+            Sample sample = Folds.trainSamples(foldid, fold, x, y, weights, offsets);
 
             ClassificationModelSet modelSet = null;
             try {
@@ -196,7 +196,7 @@ public class GLMnet extends GLMnetBase{
 
     switch (family) {
       case Binomial:
-        measures = Lognet.evaluate(outlist, lambdas, x, y, weights, foldid, measureType, keep);
+        measures = Lognet.evaluate(outlist, lambdas, x, y, weights, offsets, foldid, measureType, keep);
         break;
       case Poisson:
         measures = Fishnet.evaluate(outlist, lambdas, x, y, weights, offsets, foldid, measureType, keep);
